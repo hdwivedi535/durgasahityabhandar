@@ -13,7 +13,76 @@ B2B religious book catalogue + enquiry CRM platform.
 ### Prerequisites
 
 - Node.js 20+
-- Docker (for local MongoDB)
+- MongoDB Atlas cluster (recommended) **or** Docker for local MongoDB
+
+### MongoDB Atlas setup
+
+The backend reads `MONGODB_URI` from `backend/.env`. Use your Atlas cluster — not `localhost`.
+
+#### 1. Get your connection string
+
+In [MongoDB Atlas](https://cloud.mongodb.com):
+
+1. **Database** → your cluster → **Connect**
+2. Choose **Drivers** → copy the connection string  
+   Example: `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/`
+3. Replace `<password>` with your database user password
+4. Append the database name: `/dsb`  
+   Final form: `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/dsb`
+
+#### 2. Allow network access
+
+**Network Access** → **Add IP Address**:
+
+- For development: **Add Current IP Address**
+- Or temporarily: `0.0.0.0/0` (allow from anywhere — dev only)
+
+#### 3. Create a database user
+
+**Database Access** → **Add New Database User**:
+
+- Username + password (save these)
+- Role: **Atlas admin** or **Read and write to any database**
+
+#### 4. Update `backend/.env`
+
+```bash
+# Edit backend/.env — replace MONGODB_URI:
+MONGODB_URI=mongodb+srv://YOUR_USER:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/dsb
+```
+
+**Password special characters** must be URL-encoded in the URI:
+
+| Character | Encoded |
+|-----------|---------|
+| `@` | `%40` |
+| `#` | `%23` |
+| `$` | `%24` |
+| `%` | `%25` |
+
+#### 5. Seed and verify
+
+```bash
+npm run seed
+npm run dev -w backend
+```
+
+Test: `curl http://localhost:4000/api/v1/health` → should return `{"data":{"status":"ok"...}}`
+
+#### 6. Vercel (production)
+
+In Vercel → **backend service** → **Environment Variables**, set the same `MONGODB_URI` (and other backend vars from `.env.example`).
+
+---
+
+### Local setup (Docker alternative)
+
+If you prefer local MongoDB instead of Atlas:
+
+```bash
+docker compose up -d
+# MONGODB_URI=mongodb://localhost:27017/dsb  (default in .env.example)
+```
 
 ### Setup
 
