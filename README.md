@@ -88,6 +88,8 @@ Set these per service. **Do not commit real values.**
 | `JWT_ACCESS_EXPIRES_IN` | Optional | Default `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Optional | Default `7d` |
 
+> **If you see `FUNCTION_INVOCATION_FAILED`:** check Vercel → backend service → Logs. The most common causes are missing `JWT_SECRET` / `JWT_REFRESH_SECRET` / `MONGODB_URI`, or MongoDB Atlas IP access not allowing Vercel.
+
 #### Frontend service
 
 | Variable | Required | Description |
