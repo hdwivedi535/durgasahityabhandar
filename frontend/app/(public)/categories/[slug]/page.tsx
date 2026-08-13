@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { CategoryDto } from '@dsb/shared';
+import type { CategoryDto, PublicBookDto, PublicBookListResult } from '@dsb/shared';
 import { PublicFooter, PublicHeader } from '@/components/public/public-header';
 import { apiFetch } from '@/lib/api-client';
 
@@ -14,13 +14,23 @@ interface CategoryDetail extends CategoryDto {
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
   const [category, setCategory] = useState<CategoryDetail | null>(null);
+  const [books, setBooks] = useState<PublicBookDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!params.slug) return;
     apiFetch<CategoryDetail>(`/public/categories/${params.slug}`)
-      .then(setCategory)
-      .catch(() => setCategory(null))
+      .then((data) => {
+        setCategory(data);
+        return apiFetch<PublicBookListResult>(
+          `/public/books?categoryId=${data.id}&lang=en&limit=50`,
+        );
+      })
+      .then((result) => setBooks(result.items))
+      .catch(() => {
+        setCategory(null);
+        setBooks([]);
+      })
       .finally(() => setLoading(false));
   }, [params.slug]);
 
@@ -73,10 +83,26 @@ export default function CategoryDetailPage() {
 
             <section className="mt-10">
               <h2 className="text-lg font-medium">Books</h2>
-              <p className="mt-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted">
-                Books in this category will appear here once the book catalogue is published (Phase 3
-                continuation).
-              </p>
+              {books.length === 0 ? (
+                <p className="mt-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted">
+                  No published books in this category yet.
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {books.map((book) => (
+                    <Link
+                      key={book.id}
+                      href={`/books/${book.displaySlug}`}
+                      className="rounded-lg border border-border p-4 hover:bg-accent/30"
+                    >
+                      <p className="font-medium">{book.displayTitle}</p>
+                      {book.displayAuthor && (
+                        <p className="mt-1 text-sm text-muted">{book.displayAuthor}</p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}

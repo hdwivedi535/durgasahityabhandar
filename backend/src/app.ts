@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database';
 import { authRoutes } from './routes/auth.routes';
 import { adminRoutes, healthRoutes, publicRoutes } from './routes/index.routes';
 import { adminCategoryRoutes, publicCategoryRoutes } from './routes/category.routes';
+import { adminBookRoutes, publicBookRoutes } from './routes/book.routes';
 import { errorHandler, notFoundHandler, requestContext } from './middleware/error.middleware';
 
 let dbConnected = false;
@@ -69,8 +70,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
   await app.register(adminCategoryRoutes, { prefix: '/api/v1/admin/categories' });
+  await app.register(adminBookRoutes, { prefix: '/api/v1/admin/books' });
   await app.register(publicRoutes, { prefix: '/api/v1/public' });
   await app.register(publicCategoryRoutes, { prefix: '/api/v1/public/categories' });
+  await app.register(publicBookRoutes, { prefix: '/api/v1/public/books' });
 
   return app;
 }
