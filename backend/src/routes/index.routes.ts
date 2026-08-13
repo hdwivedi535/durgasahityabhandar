@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate, requirePermission } from '../middleware/auth.middleware';
+import { getPublicSiteSettings } from '../services/feature.service';
 
 export async function healthRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({
@@ -23,20 +24,6 @@ export async function adminRoutes(app: FastifyInstance) {
 
 export async function publicRoutes(app: FastifyInstance) {
   app.get('/settings', async () => ({
-    data: {
-      publisher: { name: 'Durga Sahitya Bhandar' },
-      features: {
-        bookCatalogue: true,
-        enquiries: true,
-        whatsapp: true,
-        publicTracking: true,
-      },
-      languages: [
-        { code: 'en', name: 'English', isDefault: true },
-        { code: 'hi', name: 'Hindi' },
-        { code: 'sa', name: 'Sanskrit' },
-        { code: 'ne', name: 'Nepali' },
-      ],
-    },
+    data: await getPublicSiteSettings(),
   }));
 }

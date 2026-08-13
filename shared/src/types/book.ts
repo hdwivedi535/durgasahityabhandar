@@ -102,6 +102,9 @@ export interface PublicBookDto extends BookDto {
   displayTitle: string;
   displaySlug: string;
   displayAuthor?: string;
+  pageTypeName?: string;
+  bindingTypeName?: string;
+  availabilityName?: string;
 }
 
 export type ImportRowAction = 'create' | 'update' | 'skip' | 'error';

@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import multipart from '@fastify/multipart';
 import { z } from 'zod';
-import { authenticate, requirePermission } from '../middleware/auth.middleware';
+import { authenticate, optionalAuthenticate, requirePermission } from '../middleware/auth.middleware';
+import { userHasPermission } from '../services/auth.service';
 import {
   bookQuerySchema,
   createBookSchema,
@@ -18,6 +19,7 @@ import {
   listBooks,
   listPublicBooks,
   publishBook,
+  unpublishBook,
   updateBook,
 } from '../services/book.service';
 import {
@@ -251,6 +253,20 @@ export async function adminBookRoutes(app: FastifyInstance) {
   );
 
   app.post(
+    '/:id/unpublish',
+    { preHandler: [authenticate, requirePermission('books.publish')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const data = await unpublishBook(id);
+        return reply.send({ data });
+      } catch (err) {
+        return handleError(err, reply);
+      }
+    },
+  );
+
+  app.post(
     '/:id/archive',
     { preHandler: [authenticate, requirePermission('books.archive')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -305,13 +321,20 @@ export async function publicBookRoutes(app: FastifyInstance) {
     return reply.send({ data: data.items });
   });
 
-  app.get('/:slug', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { slug } = request.params as { slug: string };
-    const lang = (request.query as { lang?: string }).lang ?? 'en';
-    const data = await getBookBySlug(slug, lang, true);
-    if (!data) {
-      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Book not found' } });
-    }
-    return reply.send({ data });
-  });
+  app.get(
+    '/:slug',
+    { preHandler: [optionalAuthenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { slug } = request.params as { slug: string };
+      const lang = (request.query as { lang?: string }).lang ?? 'en';
+      const preview = (request.query as { preview?: string }).preview === 'true';
+      const allowUnpublished =
+        preview && Boolean(request.user && userHasPermission(request.user, 'books.view'));
+      const data = await getBookBySlug(slug, lang, true, allowUnpublished);
+      if (!data) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Book not found' } });
+      }
+      return reply.send({ data });
+    },
+  );
 }

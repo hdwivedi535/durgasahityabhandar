@@ -44,17 +44,24 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   try {
+    const headers = new Headers(options.headers);
+
+    if (options.body !== undefined && options.body !== null) {
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+    }
+
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
+
     return parseResponse<T>(res);
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+
     throw new ApiClientError(
       'NETWORK_ERROR',
       `Cannot reach API at ${API_BASE}. Start backend with: npm run dev -w backend`,
@@ -69,18 +76,26 @@ export async function apiFetchWithToken<T>(
   options: RequestInit = {},
 ): Promise<T> {
   try {
+    const headers = new Headers(options.headers);
+
+    if (options.body !== undefined && options.body !== null) {
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+      }
+    }
+
+    headers.set('Authorization', `Bearer ${token}`);
+
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
+      headers,
     });
+
     return parseResponse<T>(res);
   } catch (err) {
     if (err instanceof ApiClientError) throw err;
+
     throw new ApiClientError(
       'NETWORK_ERROR',
       `Cannot reach API at ${API_BASE}. Start backend with: npm run dev -w backend`,

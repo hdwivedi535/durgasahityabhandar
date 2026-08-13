@@ -39,6 +39,23 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
+export async function optionalAuthenticate(request: FastifyRequest, _reply: FastifyReply) {
+  const header = request.headers.authorization;
+  const cookieToken = request.cookies?.accessToken;
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : cookieToken;
+  if (!token) return;
+
+  try {
+    const payload = verifyAccessToken(token);
+    const user = await getCurrentUser(payload.sub);
+    if (!user) return;
+    request.userId = payload.sub;
+    request.user = user;
+  } catch {
+    // public request continues unauthenticated
+  }
+}
+
 export function requirePermission(permission: PermissionKey) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (!request.user) {

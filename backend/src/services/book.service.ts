@@ -8,6 +8,9 @@ import type {
 } from '@dsb/shared';
 import { Book, type IBook } from '../models/book.model';
 import { BookTranslation as BookTranslationModel } from '../models/book-translation.model';
+import { applyPublicBookVisibility } from './visibility.service';
+import { getFeatureMap } from './feature.service';
+import { lookupNamesByIds } from './lookup.service';
 
 export class BookError extends Error {
   constructor(
@@ -173,13 +176,20 @@ function pickTranslation(
   );
 }
 
-export function toPublicBookDto(book: BookDto, lang?: string): PublicBookDto {
+export function toPublicBookDto(
+  book: BookDto,
+  lang?: string,
+  names?: { pageTypeName?: string; bindingTypeName?: string; availabilityName?: string },
+): PublicBookDto {
   const translation = pickTranslation(book.translations, lang);
   return {
     ...book,
     displayTitle: translation?.title ?? 'Untitled',
     displaySlug: translation?.slug ?? '',
     displayAuthor: translation?.author,
+    pageTypeName: names?.pageTypeName,
+    bindingTypeName: names?.bindingTypeName,
+    availabilityName: names?.availabilityName,
   };
 }
 
@@ -203,14 +213,27 @@ export async function listBooks(filters: {
 
   let bookIds: string[] | undefined;
   if (filters.search) {
-    const matches = await BookTranslationModel.find({
-      $or: [
-        { title: { $regex: filters.search, $options: 'i' } },
-        { author: { $regex: filters.search, $options: 'i' } },
-        { slug: { $regex: filters.search, $options: 'i' } },
-      ],
-    }).select('bookId');
-    bookIds = [...new Set(matches.map((m) => m.bookId.toString()))];
+    const [matches, skuIsbn] = await Promise.all([
+      BookTranslationModel.find({
+        $or: [
+          { title: { $regex: filters.search, $options: 'i' } },
+          { author: { $regex: filters.search, $options: 'i' } },
+          { slug: { $regex: filters.search, $options: 'i' } },
+        ],
+      }).select('bookId'),
+      Book.find({
+        $or: [
+          { sku: { $regex: filters.search, $options: 'i' } },
+          { 'publishing.isbn': { $regex: filters.search, $options: 'i' } },
+        ],
+      }).select('_id'),
+    ]);
+    bookIds = [
+      ...new Set([
+        ...matches.map((m) => m.bookId.toString()),
+        ...skuIsbn.map((b) => b._id.toString()),
+      ]),
+    ];
     if (bookIds.length === 0) {
       return { items: [], total: 0, page, limit };
     }
@@ -232,6 +255,22 @@ export async function listBooks(filters: {
   return { items, total, page, limit };
 }
 
+async function toPublicDtoWithLookups(book: BookDto, lang?: string): Promise<PublicBookDto> {
+  const ids = [book.physical.pageTypeId, book.physical.bindingTypeId, book.availabilityId].filter(
+    (id): id is string => Boolean(id),
+  );
+  const names = await lookupNamesByIds(ids);
+  const dto = toPublicBookDto(book, lang, {
+    pageTypeName: book.physical.pageTypeId ? names.get(book.physical.pageTypeId) : undefined,
+    bindingTypeName: book.physical.bindingTypeId
+      ? names.get(book.physical.bindingTypeId)
+      : undefined,
+    availabilityName: book.availabilityId ? names.get(book.availabilityId) : undefined,
+  });
+  const features = await getFeatureMap();
+  return applyPublicBookVisibility(dto, { pricingEnabled: features.pricing });
+}
+
 export async function listPublicBooks(filters: {
   search?: string;
   categoryId?: string;
@@ -246,7 +285,7 @@ export async function listPublicBooks(filters: {
   });
   return {
     ...result,
-    items: result.items.map((book) => toPublicBookDto(book, filters.lang)),
+    items: await Promise.all(result.items.map((book) => toPublicDtoWithLookups(book, filters.lang))),
   };
 }
 
@@ -260,26 +299,22 @@ export async function getBookBySlug(
   slug: string,
   lang = 'en',
   publicOnly = false,
+  allowUnpublished = false,
 ): Promise<PublicBookDto | null> {
   const translation = await BookTranslationModel.findOne({
     slug: slug.toLowerCase(),
     languageCode: lang,
   });
-  if (!translation) {
-    const fallback = await BookTranslationModel.findOne({ slug: slug.toLowerCase() });
-    if (!fallback) return null;
-    const book = await Book.findById(fallback.bookId);
-    if (!book) return null;
-    if (publicOnly && book.publishStatus !== 'published') return null;
-    const translations = await loadTranslations(book._id.toString());
-    return toPublicBookDto(toDto(book, translations), lang);
-  }
-
-  const book = await Book.findById(translation.bookId);
+  const resolved = translation
+    ? translation
+    : await BookTranslationModel.findOne({ slug: slug.toLowerCase() });
+  if (!resolved) return null;
+  const book = await Book.findById(resolved.bookId);
   if (!book) return null;
-  if (publicOnly && book.publishStatus !== 'published') return null;
+  if (publicOnly && !allowUnpublished && book.publishStatus !== 'published') return null;
+  if (allowUnpublished && book.publishStatus === 'archived') return null;
   const translations = await loadTranslations(book._id.toString());
-  return toPublicBookDto(toDto(book, translations), lang);
+  return toPublicDtoWithLookups(toDto(book, translations), lang);
 }
 
 export async function createBook(
@@ -425,6 +460,10 @@ export async function updateBook(
 
 export async function publishBook(id: string): Promise<BookDto> {
   return updateBook(id, { publishStatus: 'published' });
+}
+
+export async function unpublishBook(id: string): Promise<BookDto> {
+  return updateBook(id, { publishStatus: 'draft' });
 }
 
 export async function archiveBook(id: string): Promise<BookDto> {

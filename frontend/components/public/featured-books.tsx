@@ -4,21 +4,25 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { PublicBookDto, PublicBookListResult } from '@dsb/shared';
 import { apiFetch } from '@/lib/api-client';
+import { usePublicLang } from '@/lib/public-lang';
 
-export function FeaturedBooks() {
+export function FeaturedBooks({ limit = 8 }: { limit?: number }) {
+  const { lang } = usePublicLang();
   const [books, setBooks] = useState<PublicBookDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch<PublicBookDto[]>('/public/books/featured?lang=en')
+    apiFetch<PublicBookDto[]>(`/public/books/featured?lang=${lang}`)
       .then((items) => {
         if (items.length > 0) return items;
-        return apiFetch<PublicBookListResult>('/public/books?lang=en&limit=8').then((r) => r.items);
+        return apiFetch<PublicBookListResult>(`/public/books?lang=${lang}&limit=${limit}`).then(
+          (r) => r.items,
+        );
       })
       .then(setBooks)
       .catch(() => setBooks([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [lang, limit]);
 
   if (loading) {
     return <p className="text-sm text-muted">Loading catalogue…</p>;
@@ -34,7 +38,7 @@ export function FeaturedBooks() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {books.slice(0, 8).map((book) => (
+        {books.slice(0, limit).map((book) => (
         <Link
           key={book.id}
           href={`/books/${book.displaySlug}`}

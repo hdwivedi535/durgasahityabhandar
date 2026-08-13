@@ -5,9 +5,21 @@ import Link from 'next/link';
 import type { CategoryTreeNode } from '@dsb/shared';
 import { PublicFooter, PublicHeader } from '@/components/public/public-header';
 import { apiFetch } from '@/lib/api-client';
+import { usePublicLang } from '@/lib/public-lang';
 
-function CategoryCard({ node, depth = 0 }: { node: CategoryTreeNode; depth?: number }) {
-  const name = node.translations.find((t) => t.languageCode === 'en')?.name ?? node.slug;
+function CategoryCard({
+  node,
+  depth = 0,
+  lang,
+}: {
+  node: CategoryTreeNode;
+  depth?: number;
+  lang: string;
+}) {
+  const name =
+    node.translations.find((t) => t.languageCode === lang)?.name ??
+    node.translations.find((t) => t.languageCode === 'en')?.name ??
+    node.slug;
 
   return (
     <div style={{ marginLeft: depth * 16 }}>
@@ -18,9 +30,9 @@ function CategoryCard({ node, depth = 0 }: { node: CategoryTreeNode; depth?: num
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-medium">{name}</h3>
-            {node.translations.find((t) => t.languageCode === 'en')?.shortDescription && (
+            {node.translations.find((t) => t.languageCode === lang)?.shortDescription && (
               <p className="mt-1 text-sm text-muted">
-                {node.translations.find((t) => t.languageCode === 'en')?.shortDescription}
+                {node.translations.find((t) => t.languageCode === lang)?.shortDescription}
               </p>
             )}
           </div>
@@ -32,7 +44,7 @@ function CategoryCard({ node, depth = 0 }: { node: CategoryTreeNode; depth?: num
       {node.children.length > 0 && (
         <div className="mt-2 space-y-2">
           {node.children.map((child) => (
-            <CategoryCard key={child.id} node={child} depth={depth + 1} />
+            <CategoryCard key={child.id} node={child} depth={depth + 1} lang={lang} />
           ))}
         </div>
       )}
@@ -41,6 +53,7 @@ function CategoryCard({ node, depth = 0 }: { node: CategoryTreeNode; depth?: num
 }
 
 export default function CategoriesPage() {
+  const { lang } = usePublicLang();
   const [tree, setTree] = useState<CategoryTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +79,7 @@ export default function CategoriesPage() {
             </p>
           )}
           {tree.map((node) => (
-            <CategoryCard key={node.id} node={node} />
+            <CategoryCard key={node.id} node={node} lang={lang} />
           ))}
         </div>
       </main>

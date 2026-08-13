@@ -11,6 +11,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; module?: ModuleKey }> = [
   { href: '/admin/customers', label: 'Customers', module: 'customers' },
   { href: '/admin/books', label: 'Books', module: 'books' },
   { href: '/admin/categories', label: 'Categories', module: 'categories' },
+  { href: '/admin/lookups', label: 'Lookups', module: 'books' },
   { href: '/admin/website', label: 'Website', module: 'website' },
   { href: '/admin/settings', label: 'Settings', module: 'settings' },
 ];

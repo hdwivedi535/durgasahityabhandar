@@ -2,28 +2,46 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { CategoryTreeNode, PublicBookListResult, PublicBookDto } from '@dsb/shared';
+import type {
+  CategoryTreeNode,
+  PublicBookListResult,
+  PublicBookDto,
+} from '@dsb/shared';
 import { PublicFooter, PublicHeader } from '@/components/public/public-header';
 import { apiFetch } from '@/lib/api-client';
+import { usePublicLang } from '@/lib/public-lang';
+import { useSiteSettings } from '@/lib/site-settings';
 
 function flattenCategories(
   nodes: CategoryTreeNode[],
   prefix = '',
 ): Array<{ id: string; label: string }> {
   const out: Array<{ id: string; label: string }> = [];
+
   for (const node of nodes) {
     const name =
-      node.translations.find((t) => t.languageCode === 'en')?.name ?? node.slug;
+      node.translations.find((t) => t.languageCode === 'en')?.name ??
+      node.slug;
+
     const label = prefix ? `${prefix} / ${name}` : name;
-    out.push({ id: node.id, label });
+
+    out.push({
+      id: node.id,
+      label,
+    });
+
     if (node.children.length > 0) {
       out.push(...flattenCategories(node.children, label));
     }
   }
+
   return out;
 }
 
 export default function BooksPage() {
+  const { lang } = usePublicLang();
+  const settings = useSiteSettings();
+
   const [books, setBooks] = useState<PublicBookDto[]>([]);
   const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +50,10 @@ export default function BooksPage() {
   const [categoryId, setCategoryId] = useState('');
 
   useEffect(() => {
-    const handle = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    const handle = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 300);
+
     return () => window.clearTimeout(handle);
   }, [searchInput]);
 
@@ -43,92 +64,136 @@ export default function BooksPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams({ lang: 'en' });
-    if (search) params.set('search', search);
-    if (categoryId) params.set('categoryId', categoryId);
+    const params = new URLSearchParams({ lang });
+
+    if (search) {
+      params.set('search', search);
+    }
+
+    if (categoryId) {
+      params.set('categoryId', categoryId);
+    }
+
     setLoading(true);
-    apiFetch<PublicBookListResult>(`/public/books?${params.toString()}`)
+
+    apiFetch<PublicBookListResult>(
+      `/public/books?${params.toString()}`,
+    )
       .then((data) => setBooks(data.items))
       .catch(() => setBooks([]))
       .finally(() => setLoading(false));
-  }, [search, categoryId]);
+  }, [search, categoryId, lang]);
 
-  const categoryOptions = useMemo(() => flattenCategories(categories), [categories]);
+  const categoryOptions = useMemo(
+    () => flattenCategories(categories),
+    [categories],
+  );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <PublicHeader />
+
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6">
         <h1 className="text-3xl font-semibold">Books</h1>
+
         <p className="mt-2 text-muted">
-          Browse our religious book catalogue. For wholesale enquiries, contact us.
+          Browse our religious book catalogue. For wholesale enquiries,
+          contact us.
         </p>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search books by title or author"
-            className="h-10 w-full rounded-lg border border-border px-3 text-sm sm:max-w-md"
-          />
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="h-10 rounded-lg border border-border bg-white px-3 text-sm sm:max-w-xs"
-            aria-label="Filter by category"
-          >
-            <option value="">All categories</option>
-            {categoryOptions.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {loading && <p className="mt-8 text-muted">Loading…</p>}
-
-        {!loading && books.length === 0 && (
-          <p className="mt-8 rounded-lg border border-dashed border-border p-6 text-sm text-muted">
-            No published books match these filters.
+        {!settings.features.book_catalogue ? (
+          <p className="mt-8 text-muted">
+            The catalogue is currently unavailable.
           </p>
-        )}
+        ) : (
+          <div>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search books by title or author"
+                className="h-10 w-full rounded-lg border border-border px-3 text-sm sm:max-w-md"
+              />
 
-        {!loading && (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {books.map((book) => (
-            <Link
-              key={book.id}
-              href={`/books/${book.displaySlug}`}
-              className="group overflow-hidden rounded-lg border border-border hover:bg-accent/30"
-            >
-              {book.imageUrls?.[0] ? (
-                <div className="overflow-hidden border-b border-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={book.imageUrls[0]}
-                    alt={book.displayTitle}
-                    className="aspect-[3/4] w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-              ) : null}
-              <div className="p-5">
-                <h2 className="font-medium">{book.displayTitle}</h2>
-                {book.displayAuthor && (
-                  <p className="mt-1 text-sm text-muted">{book.displayAuthor}</p>
-                )}
-                {book.translations.find((t) => t.languageCode === 'en')?.shortDescription && (
-                  <p className="mt-2 text-sm text-muted line-clamp-2">
-                    {book.translations.find((t) => t.languageCode === 'en')?.shortDescription}
-                  </p>
-                )}
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="h-10 rounded-lg border border-border bg-white px-3 text-sm sm:max-w-xs"
+                aria-label="Filter by category"
+              >
+                <option value="">All categories</option>
+
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {loading && (
+              <p className="mt-8 text-muted">
+                Loading…
+              </p>
+            )}
+
+            {!loading && books.length === 0 && (
+              <p className="mt-8 rounded-lg border border-dashed border-border p-6 text-sm text-muted">
+                No published books match these filters.
+              </p>
+            )}
+
+            {!loading && books.length > 0 && (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {books.map((book) => (
+                  <Link
+                    key={book.id}
+                    href={`/books/${book.displaySlug}`}
+                    className="group overflow-hidden rounded-lg border border-border hover:bg-accent/30"
+                  >
+                    {book.imageUrls?.[0] ? (
+                      <div className="overflow-hidden border-b border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={book.imageUrls[0]}
+                          alt={book.displayTitle}
+                          className="aspect-[3/4] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="p-5">
+                      <h2 className="font-medium">
+                        {book.displayTitle}
+                      </h2>
+
+                      {book.displayAuthor && (
+                        <p className="mt-1 text-sm text-muted">
+                          {book.displayAuthor}
+                        </p>
+                      )}
+
+                      {book.translations.find(
+                        (t) => t.languageCode === lang,
+                      )?.shortDescription && (
+                        <p className="mt-2 line-clamp-2 text-sm text-muted">
+                          {
+                            book.translations.find(
+                              (t) => t.languageCode === lang,
+                            )?.shortDescription
+                          }
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
-          ))}
-        </div>
+            )}
+          </div>
         )}
       </main>
+
       <PublicFooter />
     </div>
   );

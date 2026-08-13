@@ -103,6 +103,14 @@ async function main() {
   const superAdminRole = await seedRoles(permissions);
   await seedSuperAdmin(superAdminRole);
 
+  const { ensureDefaultLookups } = await import('../services/lookup.service');
+  const { ensureFeatureToggles } = await import('../services/feature.service');
+  const { ensureCmsDefaults } = await import('../services/cms.service');
+  await ensureDefaultLookups();
+  await ensureFeatureToggles();
+  await ensureCmsDefaults();
+  console.log('Catalogue lookups, feature toggles, and CMS defaults ensured.');
+
   console.log('Seed complete.');
   await disconnectDatabase();
 }

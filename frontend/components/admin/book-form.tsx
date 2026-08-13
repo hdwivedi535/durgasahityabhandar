@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import type { BookDto, BookPublishStatus } from '@dsb/shared';
+import type { BookDto, BookPublishStatus, LookupDto } from '@dsb/shared';
 import { apiFetchWithToken } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +83,22 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
     return initial;
   });
   const [pages, setPages] = useState(book?.physical.pages?.toString() ?? '');
+  const [gsm, setGsm] = useState(book?.physical.gsm?.toString() ?? '');
+  const [weightGrams, setWeightGrams] = useState(book?.physical.weightGrams?.toString() ?? '');
+  const [lengthMm, setLengthMm] = useState(book?.physical.lengthMm?.toString() ?? '');
+  const [widthMm, setWidthMm] = useState(book?.physical.widthMm?.toString() ?? '');
+  const [heightMm, setHeightMm] = useState(book?.physical.heightMm?.toString() ?? '');
+  const [pageTypeId, setPageTypeId] = useState(book?.physical.pageTypeId ?? '');
+  const [bindingTypeId, setBindingTypeId] = useState(book?.physical.bindingTypeId ?? '');
+  const [availabilityId, setAvailabilityId] = useState(book?.availabilityId ?? '');
+  const [subjectIds, setSubjectIds] = useState<string[]>(book?.subjectIds ?? []);
+  const [tagIds, setTagIds] = useState<string[]>(book?.tagIds ?? []);
+  const [lookups, setLookups] = useState<LookupDto[]>([]);
+  const [visPhysical, setVisPhysical] = useState(book?.fieldVisibility.physical ?? true);
+  const [visPublishing, setVisPublishing] = useState(book?.fieldVisibility.publishing ?? true);
+  const [visCommercial, setVisCommercial] = useState(book?.fieldVisibility.commercial ?? false);
+  const [visAuthor, setVisAuthor] = useState(book?.fieldVisibility.author ?? true);
+  const [visTranslator, setVisTranslator] = useState(book?.fieldVisibility.translator ?? true);
   const [isbn, setIsbn] = useState(book?.publishing.isbn ?? '');
   const [edition, setEdition] = useState(book?.publishing.edition ?? '');
   const [publicationYear, setPublicationYear] = useState(
@@ -121,6 +137,10 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
         );
       })
       .catch(() => setCategories([]));
+
+    apiFetchWithToken<LookupDto[]>('/admin/lookups', accessToken)
+      .then((data) => setLookups(data.filter((item) => item.isActive)))
+      .catch(() => setLookups([]));
   }, [accessToken]);
 
   function handleTitleChange(code: string, value: string) {
@@ -161,9 +181,21 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
     const body = {
       sku: sku.trim() || undefined,
       categoryIds: selectedCategories,
+      subjectIds,
+      tagIds,
+      availabilityId: availabilityId || undefined,
       publishStatus,
       isFeatured,
-      physical: pages ? { pages: Number(pages) } : undefined,
+      physical: {
+        pages: pages ? Number(pages) : undefined,
+        gsm: gsm ? Number(gsm) : undefined,
+        weightGrams: weightGrams ? Number(weightGrams) : undefined,
+        lengthMm: lengthMm ? Number(lengthMm) : undefined,
+        widthMm: widthMm ? Number(widthMm) : undefined,
+        heightMm: heightMm ? Number(heightMm) : undefined,
+        pageTypeId: pageTypeId || undefined,
+        bindingTypeId: bindingTypeId || undefined,
+      },
       publishing: {
         isbn: isbn.trim() || undefined,
         edition: edition.trim() || undefined,
@@ -177,6 +209,13 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
         currency: 'INR',
       },
       priceVisibility: { showMrp, showWholesale, showMoq },
+      fieldVisibility: {
+        physical: visPhysical,
+        publishing: visPublishing,
+        commercial: visCommercial,
+        author: visAuthor,
+        translator: visTranslator,
+      },
       imageUrls: cleanedImages,
       translations,
     };
@@ -282,12 +321,144 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="subjects" className="block text-sm font-medium">
+            Subjects
+          </label>
+          <select
+            id="subjects"
+            multiple
+            value={subjectIds}
+            onChange={(e) =>
+              setSubjectIds(Array.from(e.target.selectedOptions, (option) => option.value))
+            }
+            className="min-h-24 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+          >
+            {lookups
+              .filter((l) => l.kind === 'subject')
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="tags" className="block text-sm font-medium">
+            Tags
+          </label>
+          <select
+            id="tags"
+            multiple
+            value={tagIds}
+            onChange={(e) =>
+              setTagIds(Array.from(e.target.selectedOptions, (option) => option.value))
+            }
+            className="min-h-24 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+          >
+            {lookups
+              .filter((l) => l.kind === 'tag')
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Input
           label="Pages"
           type="number"
           value={pages}
           onChange={(e) => setPages(e.target.value)}
         />
+        <Input label="GSM" type="number" value={gsm} onChange={(e) => setGsm(e.target.value)} />
+        <Input
+          label="Weight (g)"
+          type="number"
+          value={weightGrams}
+          onChange={(e) => setWeightGrams(e.target.value)}
+        />
+        <Input
+          label="Length (mm)"
+          type="number"
+          value={lengthMm}
+          onChange={(e) => setLengthMm(e.target.value)}
+        />
+        <Input
+          label="Width (mm)"
+          type="number"
+          value={widthMm}
+          onChange={(e) => setWidthMm(e.target.value)}
+        />
+        <Input
+          label="Height (mm)"
+          type="number"
+          value={heightMm}
+          onChange={(e) => setHeightMm(e.target.value)}
+        />
+        <div className="space-y-1.5">
+          <label htmlFor="pageType" className="block text-sm font-medium">
+            Page type
+          </label>
+          <select
+            id="pageType"
+            value={pageTypeId}
+            onChange={(e) => setPageTypeId(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"
+          >
+            <option value="">None</option>
+            {lookups
+              .filter((l) => l.kind === 'pageType')
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="bindingType" className="block text-sm font-medium">
+            Binding
+          </label>
+          <select
+            id="bindingType"
+            value={bindingTypeId}
+            onChange={(e) => setBindingTypeId(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"
+          >
+            <option value="">None</option>
+            {lookups
+              .filter((l) => l.kind === 'bindingType')
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="availability" className="block text-sm font-medium">
+            Availability
+          </label>
+          <select
+            id="availability"
+            value={availabilityId}
+            onChange={(e) => setAvailabilityId(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-border bg-white px-3 text-sm"
+          >
+            <option value="">None</option>
+            {lookups
+              .filter((l) => l.kind === 'availability')
+              .map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+          </select>
+        </div>
         <Input label="ISBN" value={isbn} onChange={(e) => setIsbn(e.target.value)} />
         <Input
           label="Edition"
@@ -332,6 +503,42 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showMoq} onChange={(e) => setShowMoq(e.target.checked)} />
           Show MOQ
+        </label>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-border p-3">
+        <p className="text-sm font-medium">Public field visibility</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={visPhysical} onChange={(e) => setVisPhysical(e.target.checked)} />
+          Physical specs
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={visPublishing}
+            onChange={(e) => setVisPublishing(e.target.checked)}
+          />
+          Publishing details
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={visCommercial}
+            onChange={(e) => setVisCommercial(e.target.checked)}
+          />
+          Commercial block (also requires pricing toggle)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={visAuthor} onChange={(e) => setVisAuthor(e.target.checked)} />
+          Author
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={visTranslator}
+            onChange={(e) => setVisTranslator(e.target.checked)}
+          />
+          Translator
         </label>
       </div>
 
