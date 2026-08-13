@@ -145,25 +145,91 @@ Set these per service. **Do not commit real values.**
 
 #### Backend service
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
-| `JWT_SECRET` | Yes | Access token secret (min 16 chars) |
-| `JWT_REFRESH_SECRET` | Yes | Refresh token secret (min 16 chars) |
-| `FRONTEND_URL` | Yes | Production frontend URL (e.g. `https://your-domain.vercel.app`) |
-| `COOKIE_SECURE` | Yes | Set to `true` in production |
+| Variable | Required | Example |
+|----------|----------|---------|
+| `MONGODB_URI` | Yes | `mongodb+srv://user:pass@cluster.mongodb.net/dsb` |
+| `JWT_SECRET` | Yes | 32+ char random string |
+| `JWT_REFRESH_SECRET` | Yes | 32+ char random string |
+| `FRONTEND_URL` | Yes | `https://your-app.vercel.app` |
+| `API_PATH_PREFIX` | Yes | `/api/backend` |
 | `NODE_ENV` | Yes | `production` |
-| `PORT` | Optional | Vercel sets this automatically |
-| `JWT_ACCESS_EXPIRES_IN` | Optional | Default `15m` |
-| `JWT_REFRESH_EXPIRES_IN` | Optional | Default `7d` |
-
-> **If you see `FUNCTION_INVOCATION_FAILED`:** check Vercel → backend service → Logs. The most common causes are missing `JWT_SECRET` / `JWT_REFRESH_SECRET` / `MONGODB_URI`, or MongoDB Atlas IP access not allowing Vercel.
+| `COOKIE_SECURE` | Optional | `true` (auto in production) |
 
 #### Frontend service
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | Backend API URL. On Vercel use `/api/backend/api/v1` (same-origin rewrite) |
+| Variable | Required | Example |
+|----------|----------|---------|
+| `NEXT_PUBLIC_API_URL` | Recommended | `/api/backend/api/v1` |
+
+> If omitted, production defaults to same-origin `/api/backend/api/v1`.
+
+### Two separate Vercel projects (your current setup)
+
+If you deployed **frontend** and **backend** as separate Vercel projects:
+
+#### Backend project (`durgasahityabhandar-backend`)
+
+**Settings → General → Root Directory:** `backend`  
+**Settings → Build:** uses `backend/vercel.json` (installs from monorepo root)
+
+**Environment Variables (required):**
+
+| Variable | Value |
+|----------|-------|
+| `MONGODB_URI` | `mongodb+srv://...@....mongodb.net/dsb` |
+| `JWT_SECRET` | 32+ char random string |
+| `JWT_REFRESH_SECRET` | 32+ char random string |
+| `FRONTEND_URL` | `https://durgasahityabhandar-frontend.vercel.app` |
+| `NODE_ENV` | `production` |
+
+> Do **not** set `API_PATH_PREFIX` for standalone backend — leave empty or omit.
+
+**Test after redeploy:**
+```text
+https://durgasahityabhandar-backend.vercel.app/api/v1/health
+```
+Must return `{"data":{"status":"ok"...}}` — not `FUNCTION_INVOCATION_FAILED`.
+
+#### Frontend project (`durgasahityabhandar-frontend`)
+
+**Settings → General → Root Directory:** `frontend`
+
+**Environment Variables:**
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_API_URL` | `https://durgasahityabhandar-backend.vercel.app/api/v1` |
+
+**Test login:** `https://durgasahityabhandar-frontend.vercel.app/login`
+
+---
+
+### Single Vercel project (monorepo Services)
+
+Alternatively, deploy from **repo root** using root `vercel.json` with Services preset. Then use `NEXT_PUBLIC_API_URL=/api/backend/api/v1` and set `API_PATH_PREFIX=/api/backend` on backend.
+
+---
+
+### Admin panel on Vercel — checklist
+
+The admin panel is at `/login` and `/admin/*` on the **frontend** service. It needs the **backend** API working.
+
+1. **Seed Atlas** (once): `npm run seed` locally with your Atlas `MONGODB_URI`
+2. **Backend env vars** set in Vercel (see table above)
+3. **Frontend env**: `NEXT_PUBLIC_API_URL=/api/backend/api/v1`
+4. **Test API**: visit `https://your-app.vercel.app/api/backend/api/v1/health` → should return `{"data":{"status":"ok"}}`
+5. **Login**: `https://your-app.vercel.app/login` with `admin@dsb.local` / `Admin@123456`
+
+**Common failures:**
+
+| Symptom | Fix |
+|---------|-----|
+| `FUNCTION_INVOCATION_FAILED` on `/api/backend/*` | Set `MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET` on backend service |
+| Login page loads but sign-in fails | Check API health URL; set `NEXT_PUBLIC_API_URL` |
+| Login works once then fails on refresh | Set `API_PATH_PREFIX=/api/backend` on backend service |
+| CORS error | Set `FRONTEND_URL` to your exact Vercel domain |
+
+> **If you see `FUNCTION_INVOCATION_FAILED`:** check Vercel → backend service → Logs.
 
 #### Seed-only (local / one-off — not required for runtime)
 

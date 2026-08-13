@@ -1,0 +1,4 @@
+{
+  "installCommand": "cd .. && npm install",
+  "buildCommand": "npm run build -w shared && npm run build -w frontend"
+}

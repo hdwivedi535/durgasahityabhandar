@@ -44,7 +44,19 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Same-origin requests (Vercel rewrites) may omit Origin header
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      const allowed = [env.FRONTEND_URL, env.FRONTEND_URL.replace(/\/$/, '')];
+      if (allowed.includes(origin) || env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(null, env.FRONTEND_URL);
+      }
+    },
     credentials: true,
   });
   await app.register(cookie);

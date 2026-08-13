@@ -12,10 +12,14 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
+  API_PATH_PREFIX: z.string().default(''),
   COOKIE_SECURE: z
     .string()
-    .transform((v) => v === 'true')
-    .default('false'),
+    .optional()
+    .transform((v) => {
+      if (v !== undefined) return v === 'true';
+      return process.env.NODE_ENV === 'production';
+    }),
 });
 
 const parsed = envSchema.safeParse(process.env);

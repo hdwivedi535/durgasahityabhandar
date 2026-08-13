@@ -30,7 +30,13 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/admin');
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Login failed');
+      const message =
+        err instanceof ApiClientError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Login failed';
+      setError(message);
     } finally {
       setSubmitting(false);
     }
@@ -76,7 +82,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
       </div>
-      <footer className="py-6 text-center">
+      <footer className="px-4 py-6">
         <FooterCredit />
       </footer>
     </div>

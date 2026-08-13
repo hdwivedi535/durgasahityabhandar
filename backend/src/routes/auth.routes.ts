@@ -7,26 +7,33 @@ import { authenticate } from '../middleware/auth.middleware';
 const REFRESH_COOKIE = 'refreshToken';
 const ACCESS_COOKIE = 'accessToken';
 
+function authCookiePath(): string {
+  const prefix = env.API_PATH_PREFIX.replace(/\/$/, '');
+  return `${prefix}/api/v1/auth`;
+}
+
 function setAuthCookies(reply: FastifyReply, accessToken: string, refreshToken: string) {
+  const refreshPath = authCookiePath();
   reply.setCookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: 15 * 60,
   });
   reply.setCookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: 'strict',
-    path: '/api/v1/auth',
+    sameSite: 'lax',
+    path: refreshPath,
     maxAge: 7 * 24 * 60 * 60,
   });
 }
 
 function clearAuthCookies(reply: FastifyReply) {
+  const refreshPath = authCookiePath();
   reply.clearCookie(ACCESS_COOKIE, { path: '/' });
-  reply.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
+  reply.clearCookie(REFRESH_COOKIE, { path: refreshPath });
 }
 
 export async function authRoutes(app: FastifyInstance) {

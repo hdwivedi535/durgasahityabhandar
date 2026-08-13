@@ -53,7 +53,7 @@ export function PublicFooter() {
           </div>
           <p className="text-sm text-muted">© {new Date().getFullYear()} Durga Sahitya Bhandar</p>
         </div>
-        <FooterCredit className="mt-6 border-t border-border pt-6 text-center sm:text-left" />
+        <FooterCredit className="mt-6 border-t border-border pt-6" />
       </div>
     </footer>
   );
