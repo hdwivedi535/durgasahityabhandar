@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ApiClientError } from '@/lib/api-client';
+import { FooterCredit } from '@/components/ui/footer-credit';
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
@@ -36,7 +37,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col bg-background px-4">
+      <div className="flex flex-1 items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader>
           <h1 className="text-xl font-semibold">Admin Sign In</h1>
@@ -73,6 +75,10 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      </div>
+      <footer className="py-6 text-center">
+        <FooterCredit />
+      </footer>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { FooterCredit } from '@/components/ui/footer-credit';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, accessToken, loading, logout } = useAuth();
@@ -37,6 +38,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-sm text-muted">Signed in as {user.email}</p>
         </header>
         <main className="flex-1 p-6">{children}</main>
+        <footer className="border-t border-border bg-white px-6 py-4">
+          <FooterCredit />
+        </footer>
       </div>
     </div>
   );
