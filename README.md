@@ -45,6 +45,62 @@ npm run dev
 
 Change these in production.
 
+## Deploying to Vercel
+
+This repo uses Vercel **Services** (multi-service monorepo). Root `vercel.json` configures:
+
+| Service | Root | Route |
+|---------|------|-------|
+| frontend | `frontend/` | `/` |
+| backend | `backend/` | `/api/backend` |
+
+### Build order
+
+Workspace packages build in dependency order. Each service runs `prebuild` to compile `@dsb/shared` before its own build:
+
+```text
+@dsb/shared → @dsb/backend → frontend
+```
+
+From the repo root, verify locally:
+
+```bash
+npm install
+npm run build
+npm run typecheck
+```
+
+### Environment variables (Vercel dashboard)
+
+Set these per service. **Do not commit real values.**
+
+#### Backend service
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string |
+| `JWT_SECRET` | Yes | Access token secret (min 16 chars) |
+| `JWT_REFRESH_SECRET` | Yes | Refresh token secret (min 16 chars) |
+| `FRONTEND_URL` | Yes | Production frontend URL (e.g. `https://your-domain.vercel.app`) |
+| `COOKIE_SECURE` | Yes | Set to `true` in production |
+| `NODE_ENV` | Yes | `production` |
+| `PORT` | Optional | Vercel sets this automatically |
+| `JWT_ACCESS_EXPIRES_IN` | Optional | Default `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Optional | Default `7d` |
+
+#### Frontend service
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Yes | Backend API URL. On Vercel use `/api/backend/api/v1` (same-origin rewrite) |
+
+#### Seed-only (local / one-off — not required for runtime)
+
+| Variable | Description |
+|----------|-------------|
+| `SEED_ADMIN_EMAIL` | Initial admin email for `npm run seed` |
+| `SEED_ADMIN_PASSWORD` | Initial admin password for `npm run seed` |
+
 ## Project Structure
 
 ```
