@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { buildApp } from '../dist/app';
+import { buildApp } from '../src/app';
 
 const appPromise = buildApp().then(async (app) => {
   await app.ready();
