@@ -74,13 +74,29 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
     }
     return initial;
   });
+  const [detailedDescriptions, setDetailedDescriptions] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const lang of LANGUAGES) {
+      initial[lang.code] =
+        book?.translations.find((t) => t.languageCode === lang.code)?.detailedDescription ?? '';
+    }
+    return initial;
+  });
   const [pages, setPages] = useState(book?.physical.pages?.toString() ?? '');
   const [isbn, setIsbn] = useState(book?.publishing.isbn ?? '');
+  const [edition, setEdition] = useState(book?.publishing.edition ?? '');
+  const [publicationYear, setPublicationYear] = useState(
+    book?.publishing.publicationYear?.toString() ?? '',
+  );
+  const [publisher, setPublisher] = useState(book?.publishing.publisher ?? '');
   const [mrp, setMrp] = useState(book?.commercial.mrp?.toString() ?? '');
   const [wholesalePrice, setWholesalePrice] = useState(
     book?.commercial.wholesalePrice?.toString() ?? '',
   );
   const [moq, setMoq] = useState(book?.commercial.moq?.toString() ?? '1');
+  const [showMrp, setShowMrp] = useState(book?.priceVisibility.showMrp ?? false);
+  const [showWholesale, setShowWholesale] = useState(book?.priceVisibility.showWholesale ?? true);
+  const [showMoq, setShowMoq] = useState(book?.priceVisibility.showMoq ?? true);
   const [imageUrls, setImageUrls] = useState<string[]>(() => {
     const existing = book?.imageUrls?.filter(Boolean) ?? [];
     return [existing[0] ?? '', existing[1] ?? '', existing[2] ?? ''];
@@ -125,6 +141,7 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
       slug: (slugs[l.code] || slugify(titles[l.code])).trim().toLowerCase(),
       author: authors[l.code]?.trim() || undefined,
       shortDescription: shortDescriptions[l.code]?.trim() || undefined,
+      detailedDescription: detailedDescriptions[l.code]?.trim() || undefined,
     }));
 
     if (translations.length === 0) {
@@ -147,13 +164,19 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
       publishStatus,
       isFeatured,
       physical: pages ? { pages: Number(pages) } : undefined,
-      publishing: isbn.trim() ? { isbn: isbn.trim() } : undefined,
+      publishing: {
+        isbn: isbn.trim() || undefined,
+        edition: edition.trim() || undefined,
+        publicationYear: publicationYear ? Number(publicationYear) : undefined,
+        publisher: publisher.trim() || undefined,
+      },
       commercial: {
         mrp: mrp ? Number(mrp) : undefined,
         wholesalePrice: wholesalePrice ? Number(wholesalePrice) : undefined,
         moq: moq ? Number(moq) : undefined,
         currency: 'INR',
       },
+      priceVisibility: { showMrp, showWholesale, showMoq },
       imageUrls: cleanedImages,
       translations,
     };
@@ -214,6 +237,26 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
               setShortDescriptions({ ...shortDescriptions, [lang.code]: e.target.value })
             }
           />
+          <div className="space-y-1.5">
+            <label
+              htmlFor={`detailed-${lang.code}`}
+              className="block text-sm font-medium"
+            >
+              Detailed description
+            </label>
+            <textarea
+              id={`detailed-${lang.code}`}
+              value={detailedDescriptions[lang.code]}
+              onChange={(e) =>
+                setDetailedDescriptions({
+                  ...detailedDescriptions,
+                  [lang.code]: e.target.value,
+                })
+              }
+              rows={4}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+            />
+          </div>
         </div>
       ))}
 
@@ -246,6 +289,22 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
           onChange={(e) => setPages(e.target.value)}
         />
         <Input label="ISBN" value={isbn} onChange={(e) => setIsbn(e.target.value)} />
+        <Input
+          label="Edition"
+          value={edition}
+          onChange={(e) => setEdition(e.target.value)}
+        />
+        <Input
+          label="Publication year"
+          type="number"
+          value={publicationYear}
+          onChange={(e) => setPublicationYear(e.target.value)}
+        />
+        <Input
+          label="Publisher"
+          value={publisher}
+          onChange={(e) => setPublisher(e.target.value)}
+        />
         <Input label="MRP (₹)" type="number" value={mrp} onChange={(e) => setMrp(e.target.value)} />
         <Input
           label="Wholesale price (₹)"
@@ -254,6 +313,26 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
           onChange={(e) => setWholesalePrice(e.target.value)}
         />
         <Input label="MOQ" type="number" value={moq} onChange={(e) => setMoq(e.target.value)} />
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-border p-3">
+        <p className="text-sm font-medium">Public price visibility</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showMrp} onChange={(e) => setShowMrp(e.target.checked)} />
+          Show MRP
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showWholesale}
+            onChange={(e) => setShowWholesale(e.target.checked)}
+          />
+          Show wholesale price
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showMoq} onChange={(e) => setShowMoq(e.target.checked)} />
+          Show MOQ
+        </label>
       </div>
 
       <div className="space-y-2 rounded-lg border border-border p-3">

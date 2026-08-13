@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PublicFooter, PublicHeader } from '@/components/public/public-header';
+import { FeaturedBooks } from '@/components/public/featured-books';
 import { Button } from '@/components/ui/button';
 
 export default function PublicHomePage() {
@@ -33,7 +34,7 @@ export default function PublicHomePage() {
         <section className="border-y border-border bg-white">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:grid-cols-3 sm:px-6">
             {[
-              { title: 'Catalogue', desc: 'Search and filter books by category, language, and subject.' },
+              { title: 'Catalogue', desc: 'Search and filter books by category.' },
               { title: 'Wholesale Enquiries', desc: 'Request quotes for bulk orders without checkout.' },
               { title: 'Track Progress', desc: 'Follow your enquiry status securely after submission.' },
             ].map((item) => (
@@ -43,6 +44,19 @@ export default function PublicHomePage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold">Featured books</h2>
+              <p className="mt-2 text-sm text-muted">Published titles from the catalogue</p>
+            </div>
+            <Link href="/books" className="text-sm text-muted hover:text-foreground">
+              View all →
+            </Link>
+          </div>
+          <FeaturedBooks />
         </section>
       </main>
       <PublicFooter />

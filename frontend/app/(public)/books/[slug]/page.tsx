@@ -75,6 +75,24 @@ export default function BookDetailPage() {
                   <p className="text-muted">{book.publishing.isbn}</p>
                 </div>
               )}
+              {book.publishing.edition && (
+                <div>
+                  <p className="text-sm font-medium">Edition</p>
+                  <p className="text-muted">{book.publishing.edition}</p>
+                </div>
+              )}
+              {book.publishing.publicationYear && (
+                <div>
+                  <p className="text-sm font-medium">Publication year</p>
+                  <p className="text-muted">{book.publishing.publicationYear}</p>
+                </div>
+              )}
+              {book.publishing.publisher && (
+                <div>
+                  <p className="text-sm font-medium">Publisher</p>
+                  <p className="text-muted">{book.publishing.publisher}</p>
+                </div>
+              )}
               {book.commercial.mrp != null && book.priceVisibility.showMrp && (
                 <div>
                   <p className="text-sm font-medium">MRP</p>

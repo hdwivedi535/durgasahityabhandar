@@ -65,6 +65,19 @@ export default function AdminBooksPage() {
     await loadBooks();
   }
 
+  async function handleDelete(book: BookDto) {
+    if (!accessToken) return;
+    if (
+      !window.confirm(
+        `Permanently delete "${bookTitle(book)}"? This cannot be undone. Prefer Archive if you may need the record later.`,
+      )
+    ) {
+      return;
+    }
+    await apiFetchWithToken(`/admin/books/${book.id}`, accessToken, { method: 'DELETE' });
+    await loadBooks();
+  }
+
   async function handleExport(format: 'csv' | 'xlsx') {
     if (!accessToken) return;
     const params = new URLSearchParams({ format });
@@ -185,6 +198,9 @@ export default function AdminBooksPage() {
                             Archive
                           </Button>
                         )}
+                        <Button type="button" variant="secondary" onClick={() => handleDelete(book)}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   );
