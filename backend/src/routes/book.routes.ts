@@ -1,4 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import multipart from '@fastify/multipart';
+import { z } from 'zod';
 import { authenticate, requirePermission } from '../middleware/auth.middleware';
 import {
   bookQuerySchema,
@@ -18,17 +20,51 @@ import {
   publishBook,
   updateBook,
 } from '../services/book.service';
+import {
+  buildBookTemplate,
+  confirmBookImport,
+  exportBooks,
+  previewBookImport,
+} from '../services/book-import.service';
+import type { BookImportPayload } from '@dsb/shared';
 
 function handleError(err: unknown, reply: FastifyReply) {
   if (err instanceof BookError) {
     const status =
-      err.code === 'NOT_FOUND' ? 404 : err.code === 'SLUG_EXISTS' || err.code === 'SKU_EXISTS' ? 409 : 400;
+      err.code === 'NOT_FOUND'
+        ? 404
+        : err.code === 'SLUG_EXISTS' || err.code === 'SKU_EXISTS' || err.code === 'IMAGE_REQUIRED'
+          ? err.code === 'IMAGE_REQUIRED'
+            ? 400
+            : 409
+          : 400;
     return reply.status(status).send({ error: { code: err.code, message: err.message } });
   }
   throw err;
 }
 
+const confirmSchema = z.object({
+  rows: z.array(z.record(z.any())).min(1),
+});
+
+async function readUpload(request: FastifyRequest): Promise<{
+  buffer: Buffer;
+  filename: string;
+  mimetype?: string;
+}> {
+  const file = await request.file();
+  if (!file) {
+    throw new Error('No file uploaded');
+  }
+  const buffer = await file.toBuffer();
+  return { buffer, filename: file.filename, mimetype: file.mimetype };
+}
+
 export async function adminBookRoutes(app: FastifyInstance) {
+  await app.register(multipart, {
+    limits: { fileSize: 15 * 1024 * 1024 },
+  });
+
   app.get(
     '/',
     { preHandler: [authenticate, requirePermission('books.view')] },
@@ -48,6 +84,104 @@ export async function adminBookRoutes(app: FastifyInstance) {
         page,
         limit,
       });
+      return reply.send({ data });
+    },
+  );
+
+  app.get(
+    '/import/template',
+    { preHandler: [authenticate, requirePermission('books.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const format = (request.query as { format?: string }).format === 'xlsx' ? 'xlsx' : 'csv';
+      const file = buildBookTemplate(format);
+      return reply
+        .header('Content-Type', file.contentType)
+        .header('Content-Disposition', `attachment; filename="${file.filename}"`)
+        .send(file.buffer);
+    },
+  );
+
+  app.get(
+    '/export',
+    { preHandler: [authenticate, requirePermission('books.view')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const q = request.query as {
+        format?: string;
+        search?: string;
+        status?: string;
+        categoryId?: string;
+      };
+      const format = q.format === 'xlsx' ? 'xlsx' : 'csv';
+      const file = await exportBooks({
+        format,
+        search: q.search,
+        status: q.status as
+          | 'draft'
+          | 'preview'
+          | 'published'
+          | 'archived'
+          | undefined,
+        categoryId: q.categoryId,
+      });
+      return reply
+        .header('Content-Type', file.contentType)
+        .header('Content-Disposition', `attachment; filename="${file.filename}"`)
+        .send(file.buffer);
+    },
+  );
+
+  app.post(
+    '/import/preview',
+    { preHandler: [authenticate, requirePermission('books.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const upload = await readUpload(request);
+        const validateRemote =
+          (request.query as { validateImages?: string }).validateImages !== 'false';
+        const data = await previewBookImport(
+          upload.buffer,
+          upload.filename,
+          upload.mimetype,
+          { validateImagesRemote: validateRemote },
+        );
+        return reply.send({ data });
+      } catch (err) {
+        return reply.status(400).send({
+          error: {
+            code: 'IMPORT_PARSE_ERROR',
+            message: err instanceof Error ? err.message : 'Failed to parse import file',
+          },
+        });
+      }
+    },
+  );
+
+  app.post(
+    '/import/confirm',
+    { preHandler: [authenticate, requirePermission('books.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = confirmSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid import payload' },
+        });
+      }
+      const payloads = parsed.data.rows as BookImportPayload[];
+      // Require edit permission when any update is present
+      const hasUpdates = payloads.some((p) => Boolean(p.existingBookId));
+      if (hasUpdates) {
+        // soft check via user permissions loaded on request
+        const user = request.user;
+        const canEdit =
+          user?.roleSlugs.includes('super-admin') ||
+          user?.permissions.includes('books.edit');
+        if (!canEdit) {
+          return reply.status(403).send({
+            error: { code: 'FORBIDDEN', message: 'books.edit required to update existing books' },
+          });
+        }
+      }
+      const data = await confirmBookImport(payloads, request.userId);
       return reply.send({ data });
     },
   );

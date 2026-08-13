@@ -88,3 +88,60 @@ export async function apiFetchWithToken<T>(
     );
   }
 }
+
+/** Upload multipart file (do not set Content-Type — browser sets boundary). */
+export async function apiUploadWithToken<T>(
+  path: string,
+  token: string,
+  formData: FormData,
+): Promise<T> {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    return parseResponse<T>(res);
+  } catch (err) {
+    if (err instanceof ApiClientError) throw err;
+    throw new ApiClientError(
+      'NETWORK_ERROR',
+      `Cannot reach API at ${API_BASE}. Start backend with: npm run dev -w backend`,
+      0,
+    );
+  }
+}
+
+/** Download a binary file with auth and trigger browser save. */
+export async function apiDownloadWithToken(
+  path: string,
+  token: string,
+  fallbackFilename: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new ApiClientError('DOWNLOAD_FAILED', `Download failed (${res.status})`, res.status);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] ?? fallbackFilename;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function getApiBase(): string {
+  return API_BASE;
+}

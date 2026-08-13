@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { PublicBookDto } from '@dsb/shared';
 import { PublicFooter, PublicHeader } from '@/components/public/public-header';
+import { BookImageGallery } from '@/components/ui/book-image-gallery';
 import { apiFetch } from '@/lib/api-client';
 
 export default function BookDetailPage() {
@@ -40,6 +41,12 @@ export default function BookDetailPage() {
             <h1 className="mt-4 text-3xl font-semibold">{book.displayTitle}</h1>
             {translation?.author && (
               <p className="mt-2 text-muted">by {translation.author}</p>
+            )}
+
+            {book.imageUrls?.length > 0 && (
+              <div className="mt-8">
+                <BookImageGallery images={book.imageUrls} alt={book.displayTitle} />
+              </div>
             )}
 
             {translation?.shortDescription && (

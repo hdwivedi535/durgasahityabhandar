@@ -1,4 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import multipart from '@fastify/multipart';
+import { z } from 'zod';
 import { authenticate, requirePermission } from '../middleware/auth.middleware';
 import {
   archiveCategorySchema,
@@ -19,6 +21,13 @@ import {
   reorderCategories,
   updateCategory,
 } from '../services/category.service';
+import {
+  buildCategoryTemplate,
+  confirmCategoryImport,
+  exportCategories,
+  previewCategoryImport,
+} from '../services/category-import.service';
+import type { CategoryImportPayload } from '@dsb/shared';
 
 function handleError(err: unknown, reply: FastifyReply) {
   if (err instanceof CategoryError) {
@@ -28,7 +37,26 @@ function handleError(err: unknown, reply: FastifyReply) {
   throw err;
 }
 
+const confirmSchema = z.object({
+  rows: z.array(z.record(z.any())).min(1),
+});
+
+async function readUpload(request: FastifyRequest): Promise<{
+  buffer: Buffer;
+  filename: string;
+  mimetype?: string;
+}> {
+  const file = await request.file();
+  if (!file) throw new Error('No file uploaded');
+  const buffer = await file.toBuffer();
+  return { buffer, filename: file.filename, mimetype: file.mimetype };
+}
+
 export async function adminCategoryRoutes(app: FastifyInstance) {
+  await app.register(multipart, {
+    limits: { fileSize: 10 * 1024 * 1024 },
+  });
+
   app.get(
     '/',
     { preHandler: [authenticate, requirePermission('categories.view')] },
@@ -50,6 +78,83 @@ export async function adminCategoryRoutes(app: FastifyInstance) {
         status,
         parentId: parentId === 'null' ? null : parentId,
       });
+      return reply.send({ data });
+    },
+  );
+
+  app.get(
+    '/import/template',
+    { preHandler: [authenticate, requirePermission('categories.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const format = (request.query as { format?: string }).format === 'xlsx' ? 'xlsx' : 'csv';
+      const file = buildCategoryTemplate(format);
+      return reply
+        .header('Content-Type', file.contentType)
+        .header('Content-Disposition', `attachment; filename="${file.filename}"`)
+        .send(file.buffer);
+    },
+  );
+
+  app.get(
+    '/export',
+    { preHandler: [authenticate, requirePermission('categories.view')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const q = request.query as { format?: string; search?: string };
+      const format = q.format === 'xlsx' ? 'xlsx' : 'csv';
+      const file = await exportCategories({ format, search: q.search });
+      return reply
+        .header('Content-Type', file.contentType)
+        .header('Content-Disposition', `attachment; filename="${file.filename}"`)
+        .send(file.buffer);
+    },
+  );
+
+  app.post(
+    '/import/preview',
+    { preHandler: [authenticate, requirePermission('categories.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const upload = await readUpload(request);
+        const data = await previewCategoryImport(upload.buffer, upload.filename, upload.mimetype);
+        return reply.send({ data });
+      } catch (err) {
+        return reply.status(400).send({
+          error: {
+            code: 'IMPORT_PARSE_ERROR',
+            message: err instanceof Error ? err.message : 'Failed to parse import file',
+          },
+        });
+      }
+    },
+  );
+
+  app.post(
+    '/import/confirm',
+    { preHandler: [authenticate, requirePermission('categories.create')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = confirmSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid import payload' },
+        });
+      }
+      const payloads = parsed.data.rows as CategoryImportPayload[];
+      const hasUpdates = payloads.some((p) => Boolean(p.existingCategoryId));
+      if (hasUpdates) {
+        const user = request.user;
+        const canEdit =
+          user?.roleSlugs.includes('super-admin') ||
+          user?.permissions.includes('categories.edit');
+        if (!canEdit) {
+          return reply.status(403).send({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'categories.edit required to update existing categories',
+            },
+          });
+        }
+      }
+      const data = await confirmCategoryImport(payloads, request.userId);
       return reply.send({ data });
     },
   );

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { BookDto, BookListResult } from '@dsb/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetchWithToken } from '@/lib/api-client';
+import { apiDownloadWithToken, apiFetchWithToken } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { BookForm } from '@/components/admin/book-form';
+import { CatalogueImportModal } from '@/components/admin/catalogue-import-modal';
 
 function bookTitle(book: BookDto): string {
   return (
@@ -25,6 +26,7 @@ export default function AdminBooksPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<BookDto | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const loadBooks = useCallback(async () => {
     if (!accessToken) return;
@@ -63,23 +65,45 @@ export default function AdminBooksPage() {
     await loadBooks();
   }
 
+  async function handleExport(format: 'csv' | 'xlsx') {
+    if (!accessToken) return;
+    const params = new URLSearchParams({ format });
+    if (search.trim()) params.set('search', search.trim());
+    await apiDownloadWithToken(
+      `/admin/books/export?${params.toString()}`,
+      accessToken,
+      `books-export.${format}`,
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Books</h1>
           <p className="mt-1 text-sm text-muted">
-            Manage catalogue entries — titles, categories, pricing, and publish status
+            Manage catalogue entries — bulk import, export, images, and publish status
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-        >
-          Add Book
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={() => setShowImport(true)}>
+            Import
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => handleExport('csv')}>
+            Export CSV
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => handleExport('xlsx')}>
+            Export Excel
+          </Button>
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+          >
+            Add Book
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -106,24 +130,39 @@ export default function AdminBooksPage() {
             {loading ? (
               <p className="text-sm text-muted">Loading…</p>
             ) : books.length === 0 ? (
-              <p className="text-sm text-muted">No books yet. Create your first book.</p>
+              <p className="text-sm text-muted">No books yet. Create or import your first books.</p>
             ) : (
               <div className="space-y-3">
                 {books.map((book) => {
                   const translation =
                     book.translations.find((t) => t.languageCode === 'en') ?? book.translations[0];
+                  const cover = book.imageUrls?.[0];
                   return (
                     <div
                       key={book.id}
                       className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div>
-                        <p className="font-medium">{bookTitle(book)}</p>
-                        <p className="text-sm text-muted">
-                          {translation?.author ? `${translation.author} · ` : ''}
-                          {translation?.slug} · {book.publishStatus}
-                          {book.isFeatured ? ' · featured' : ''}
-                        </p>
+                      <div className="flex gap-3">
+                        {cover ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={cover}
+                            alt={bookTitle(book)}
+                            className="h-16 w-12 rounded border border-border object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-12 items-center justify-center rounded border border-dashed border-border text-[10px] text-muted">
+                            No img
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium">{bookTitle(book)}</p>
+                          <p className="text-sm text-muted">
+                            {translation?.author ? `${translation.author} · ` : ''}
+                            {translation?.slug} · {book.publishStatus}
+                            {book.isFeatured ? ' · featured' : ''}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -178,6 +217,16 @@ export default function AdminBooksPage() {
           </Card>
         )}
       </div>
+
+      {accessToken && (
+        <CatalogueImportModal
+          open={showImport}
+          onClose={() => setShowImport(false)}
+          accessToken={accessToken}
+          entity="books"
+          onImported={loadBooks}
+        />
+      )}
     </div>
   );
 }

@@ -81,6 +81,10 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
     book?.commercial.wholesalePrice?.toString() ?? '',
   );
   const [moq, setMoq] = useState(book?.commercial.moq?.toString() ?? '1');
+  const [imageUrls, setImageUrls] = useState<string[]>(() => {
+    const existing = book?.imageUrls?.filter(Boolean) ?? [];
+    return [existing[0] ?? '', existing[1] ?? '', existing[2] ?? ''];
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -129,6 +133,14 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
       return;
     }
 
+    const cleanedImages = imageUrls.map((u) => u.trim()).filter(Boolean).slice(0, 3);
+
+    if (publishStatus === 'published' && cleanedImages.length < 1) {
+      setError('Published books require Image 1 (cover URL)');
+      setSubmitting(false);
+      return;
+    }
+
     const body = {
       sku: sku.trim() || undefined,
       categoryIds: selectedCategories,
@@ -142,6 +154,7 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
         moq: moq ? Number(moq) : undefined,
         currency: 'INR',
       },
+      imageUrls: cleanedImages,
       translations,
     };
 
@@ -241,6 +254,67 @@ export function BookForm({ accessToken, book, onSuccess, onCancel }: BookFormPro
           onChange={(e) => setWholesalePrice(e.target.value)}
         />
         <Input label="MOQ" type="number" value={moq} onChange={(e) => setMoq(e.target.value)} />
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-border p-3">
+        <p className="text-sm font-medium">Images (URL) — max 3</p>
+        <p className="text-xs text-muted">
+          Image 1 is the cover (required for published books). Image 2 and 3 are optional.
+        </p>
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="flex items-start gap-2">
+            <div className="flex-1">
+              <Input
+                label={`Image ${index + 1} URL${index === 0 ? ' (cover)' : ''}`}
+                value={imageUrls[index]}
+                onChange={(e) => {
+                  const next = [...imageUrls];
+                  next[index] = e.target.value;
+                  setImageUrls(next);
+                }}
+                placeholder="https://example.com/book.jpg"
+              />
+            </div>
+            {imageUrls[index] && (
+              <div className="mt-6 flex flex-col gap-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrls[index]}
+                  alt={`Preview ${index + 1}`}
+                  className="h-14 w-14 rounded border border-border object-cover"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const next = [...imageUrls];
+                    next[index] = '';
+                    setImageUrls(next);
+                  }}
+                >
+                  Remove
+                </Button>
+                {index > 0 && imageUrls[index] && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const next = [...imageUrls];
+                      const tmp = next[index - 1];
+                      next[index - 1] = next[index];
+                      next[index] = tmp;
+                      setImageUrls(next);
+                    }}
+                  >
+                    Move up
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <div className="space-y-1.5">

@@ -20,6 +20,8 @@ export interface IBook extends Document {
   commercial: BookCommercial;
   fieldVisibility: BookFieldVisibility;
   priceVisibility: BookPriceVisibility;
+  /** Ordered image URLs (max 3). Index 0 = primary/cover. Option A storage. */
+  imageUrls: string[];
   coverMediaId?: Types.ObjectId;
   galleryMediaIds: Types.ObjectId[];
   isFeatured: boolean;
@@ -97,6 +99,14 @@ const bookSchema = new Schema<IBook>(
     commercial: { type: commercialSchema, default: () => ({ currency: 'INR' }) },
     fieldVisibility: { type: fieldVisibilitySchema, default: () => ({}) },
     priceVisibility: { type: priceVisibilitySchema, default: () => ({}) },
+    imageUrls: {
+      type: [{ type: String, trim: true }],
+      default: [],
+      validate: {
+        validator: (v: string[]) => Array.isArray(v) && v.length <= 3,
+        message: 'A book may have at most 3 image URLs',
+      },
+    },
     coverMediaId: { type: Schema.Types.ObjectId, ref: 'Media' },
     galleryMediaIds: [{ type: Schema.Types.ObjectId, ref: 'Media' }],
     isFeatured: { type: Boolean, default: false, index: true },

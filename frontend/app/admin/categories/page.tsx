@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CategoryDto, CategoryTreeNode } from '@dsb/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetchWithToken } from '@/lib/api-client';
+import { apiDownloadWithToken, apiFetchWithToken } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CategoryForm } from '@/components/admin/category-form';
 import { CategoryTree } from '@/components/admin/category-tree';
+import { CatalogueImportModal } from '@/components/admin/catalogue-import-modal';
 
 export default function AdminCategoriesPage() {
   const { accessToken } = useAuth();
@@ -17,6 +18,7 @@ export default function AdminCategoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CategoryDto | null>(null);
   const [parentForNew, setParentForNew] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const loadTree = useCallback(async () => {
     if (!accessToken) return;
@@ -89,16 +91,36 @@ export default function AdminCategoriesPage() {
     await loadTree();
   }
 
+  async function handleExport(format: 'csv' | 'xlsx') {
+    if (!accessToken) return;
+    await apiDownloadWithToken(
+      `/admin/categories/export?format=${format}`,
+      accessToken,
+      `categories-export.${format}`,
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Categories</h1>
           <p className="mt-1 text-sm text-muted">
-            Manage hierarchical book categories — fully admin controlled
+            Manage hierarchical book categories — bulk import/export supported
           </p>
         </div>
-        <Button onClick={() => handleCreateChild(null)}>Add Root Category</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={() => setShowImport(true)}>
+            Import
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => handleExport('csv')}>
+            Export CSV
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => handleExport('xlsx')}>
+            Export Excel
+          </Button>
+          <Button onClick={() => handleCreateChild(null)}>Add Root Category</Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -150,6 +172,16 @@ export default function AdminCategoriesPage() {
           </Card>
         )}
       </div>
+
+      {accessToken && (
+        <CatalogueImportModal
+          open={showImport}
+          onClose={() => setShowImport(false)}
+          accessToken={accessToken}
+          entity="categories"
+          onImported={loadTree}
+        />
+      )}
     </div>
   );
 }

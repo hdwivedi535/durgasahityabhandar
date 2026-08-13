@@ -77,6 +77,7 @@ export const createBookSchema = z.object({
   priceVisibility: priceVisibilitySchema.optional(),
   coverMediaId: z.string().optional(),
   galleryMediaIds: z.array(z.string()).optional(),
+  imageUrls: z.array(z.string().url()).max(3).optional(),
   isFeatured: z.boolean().optional(),
   publishStatus: z.enum(['draft', 'preview', 'published', 'archived']).optional(),
   translations: z.array(translationSchema).min(1),

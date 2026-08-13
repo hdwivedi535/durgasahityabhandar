@@ -27,6 +27,23 @@ function toObjectIdArray(values?: string[]): mongoose.Types.ObjectId[] {
   return (values ?? []).map((id) => new mongoose.Types.ObjectId(id));
 }
 
+function normalizeImageUrls(urls?: string[]): string[] {
+  const cleaned = (urls ?? [])
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  return cleaned;
+}
+
+function assertPublishedHasCover(status: BookPublishStatus, imageUrls: string[]) {
+  if (status === 'published' && imageUrls.length < 1) {
+    throw new BookError(
+      'IMAGE_REQUIRED',
+      'Published books require at least one image (Image 1 / cover URL)',
+    );
+  }
+}
+
 function mapTranslation(doc: {
   languageCode: string;
   title: string;
@@ -67,6 +84,7 @@ function toDto(book: IBook, translations: BookTranslation[]): BookDto {
     commercial: book.commercial ?? { currency: 'INR' },
     fieldVisibility: book.fieldVisibility ?? {},
     priceVisibility: book.priceVisibility ?? {},
+    imageUrls: book.imageUrls ?? [],
     coverMediaId: book.coverMediaId?.toString(),
     galleryMediaIds: book.galleryMediaIds.map((id) => id.toString()),
     isFeatured: book.isFeatured,
@@ -277,6 +295,7 @@ export async function createBook(
     commercial?: IBook['commercial'];
     fieldVisibility?: IBook['fieldVisibility'];
     priceVisibility?: IBook['priceVisibility'];
+    imageUrls?: string[];
     coverMediaId?: string;
     galleryMediaIds?: string[];
     isFeatured?: boolean;
@@ -293,6 +312,9 @@ export async function createBook(
   await assertSlugAvailable(input.translations);
 
   const publishStatus = input.publishStatus ?? 'draft';
+  const imageUrls = normalizeImageUrls(input.imageUrls);
+  assertPublishedHasCover(publishStatus, imageUrls);
+
   const book = await Book.create({
     sku: input.sku,
     categoryIds: toObjectIdArray(input.categoryIds),
@@ -305,6 +327,7 @@ export async function createBook(
     commercial: input.commercial ?? { currency: 'INR' },
     fieldVisibility: input.fieldVisibility ?? {},
     priceVisibility: input.priceVisibility ?? {},
+    imageUrls,
     coverMediaId: toObjectId(input.coverMediaId),
     galleryMediaIds: toObjectIdArray(input.galleryMediaIds),
     isFeatured: input.isFeatured ?? false,
@@ -331,6 +354,7 @@ export async function updateBook(
     commercial: IBook['commercial'];
     fieldVisibility: IBook['fieldVisibility'];
     priceVisibility: IBook['priceVisibility'];
+    imageUrls: string[];
     coverMediaId: string | null;
     galleryMediaIds: string[];
     isFeatured: boolean;
@@ -369,6 +393,9 @@ export async function updateBook(
   if (input.priceVisibility) {
     book.priceVisibility = { ...book.priceVisibility, ...input.priceVisibility };
   }
+  if (input.imageUrls !== undefined) {
+    book.imageUrls = normalizeImageUrls(input.imageUrls);
+  }
   if (input.coverMediaId !== undefined) {
     book.coverMediaId = input.coverMediaId ? toObjectId(input.coverMediaId) : undefined;
   }
@@ -382,6 +409,10 @@ export async function updateBook(
       book.publishedAt = new Date();
     }
   }
+
+  const nextStatus = input.publishStatus ?? book.publishStatus;
+  const nextImages = input.imageUrls !== undefined ? book.imageUrls : book.imageUrls ?? [];
+  assertPublishedHasCover(nextStatus, nextImages);
 
   await book.save();
 
