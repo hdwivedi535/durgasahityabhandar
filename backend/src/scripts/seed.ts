@@ -69,8 +69,11 @@ async function seedSuperAdmin(superAdminRole: Awaited<ReturnType<typeof seedRole
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123456';
 
   const existing = await User.findOne({ email });
+
   if (existing) {
-    console.log(`Super admin already exists: ${email}`);
+    existing.passwordHash = await hashPassword(password);
+    await existing.save();
+    console.log(`Super admin password updated: ${email}`);
     return;
   }
 
