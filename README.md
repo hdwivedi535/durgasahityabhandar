@@ -118,7 +118,7 @@ docs/         Architecture documentation
 |-------|--------|
 | 1 — Architecture | Complete |
 | 2 — Foundation | In progress |
-| 3 — CMS + Catalogue | Planned |
+| 3 — CMS + Catalogue | In progress — categories complete, books next |
 | 4 — CRM | Planned |
 
 See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for full architecture.

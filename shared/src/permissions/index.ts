@@ -18,7 +18,7 @@ export type ModuleKey = (typeof MODULES)[number];
 
 export const ACTIONS = {
   books: ['view', 'create', 'edit', 'archive', 'delete', 'publish', 'change_visibility'],
-  categories: ['view', 'create', 'edit', 'archive', 'delete'],
+  categories: ['view', 'create', 'edit', 'reorder', 'publish', 'hide', 'archive', 'delete'],
   media: ['view', 'upload', 'edit', 'archive', 'delete'],
   customers: ['view', 'create', 'edit', 'merge', 'archive', 'delete'],
   enquiries: [

@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Date:** 13 August 2026  
-**Status:** Approved — Phase 2 in progress  
+**Status:** Approved — Phase 3 in progress  
 **Scope:** Architecture only — no application implementation
 
 ---
@@ -588,7 +588,29 @@ HTTP status mapping: 400 validation, 401 unauthenticated, 403 unauthorized, 404 
 
 **Indexes:** `bookId + languageCode` (unique), text index on title, author
 
-#### `categories`, `pageTypes`, `bindingTypes`, `subjects`, `tags`, `availabilityStatuses`
+#### `categories` (hierarchical — see §28.6)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | |
+| `parentId` | ObjectId | nullable — root categories |
+| `ancestorIds` | [ObjectId] | denormalized path for queries |
+| `slug` | String | unique, admin-configured |
+| `status` | Enum | draft, published, hidden, archived |
+| `isVisible` | Boolean | independent visibility toggle |
+| `isFeatured` | Boolean | homepage/nav highlights |
+| `displayOrder` | Number | sibling sort order |
+| `imageMediaId` | ObjectId | optional category image |
+| `iconMediaId` | ObjectId | optional icon |
+| `translations` | [{ languageCode, name, shortDescription, description }] | multilingual |
+| `seo` | Object | title, description, keywords, social, canonical, indexable |
+| `archivedAt` | Date | soft archive timestamp |
+| `createdBy` | ObjectId | |
+| `createdAt`, `updatedAt` | Date | |
+
+**Indexes:** `slug` (unique), `parentId`, `status`, `isVisible`, `displayOrder`, `ancestorIds`
+
+#### `pageTypes`, `bindingTypes`, `subjects`, `tags`, `availabilityStatuses`
 
 Admin-managed lookup collections with common shape:
 
@@ -600,7 +622,6 @@ Admin-managed lookup collections with common shape:
 | `isActive` | Boolean |
 | `isArchived` | Boolean |
 | `translations` | [{ languageCode, name, description }] |
-| `parentId` | ObjectId (categories only) |
 | `createdAt`, `updatedAt` | Date |
 
 ---
@@ -1128,7 +1149,7 @@ Full seed list (abbreviated — complete list in `shared/permissions/index.ts`):
 | Module | Actions |
 |--------|---------|
 | books | view, create, edit, archive, delete, publish, change_visibility |
-| categories | view, create, edit, archive, delete |
+| categories | view, create, edit, reorder, publish, hide, archive, delete |
 | media | view, upload, edit, archive, delete |
 | customers | view, create, edit, merge, archive, delete |
 | enquiries | view, create, edit, assign, reassign, reply, internal_note, change_status, change_priority, close, reopen, delete |
@@ -1833,6 +1854,114 @@ stateDiagram-v2
 - Only `publishStatus: published` books returned
 - Visibility engine applied per field
 
+### 28.6 Category Management Architecture
+
+Categories are **business data**, not source code. No category names, hierarchy, ordering, or visibility may be hard-coded.
+
+#### 28.6.1 Data Model
+
+```mermaid
+erDiagram
+    Category ||--o{ Category : parent
+    Category }o--o{ Book : assigned
+    Category ||--o{ CategoryTranslation : has
+```
+
+| Field | Purpose |
+|-------|---------|
+| `parentId` | Parent category (null = root) |
+| `ancestorIds` | Denormalized path for efficient subtree queries |
+| `slug` | URL-safe identifier (`/categories/bhagavad-gita`) |
+| `status` | draft, published, hidden, archived |
+| `isVisible` | Show/hide without deleting |
+| `isFeatured` | Homepage/nav highlights |
+| `displayOrder` | Sibling ordering (not alphabetical by default) |
+| `imageMediaId` / `iconMediaId` | Category media |
+| `translations[]` | Per-language name, shortDescription, description |
+| `seo` | title, description, keywords, social, canonical, indexable |
+
+#### 28.6.2 Hierarchy
+
+- Unlimited depth supported (Level 1 → 2 → 3 → 4+)
+- UI presents tree with expand/collapse; discourage unnecessarily deep trees
+- Admin can create, move, reorder, and reparent categories
+- Example hierarchy: Religious Books → Hindu Scriptures → Bhagavad Gita → Hindi Editions
+
+#### 28.6.3 Multilingual Categories
+
+Each category stores independent translations:
+
+| Language | Example |
+|----------|---------|
+| en | Bhagavad Gita |
+| hi | भगवद्गीता |
+| sa | श्रीमद्भगवद्गीता |
+| ne | श्रीमद्भगवद्गीता |
+
+Missing translation → fallback language (configurable).
+
+#### 28.6.4 Book–Category Relationship
+
+- Books reference categories via `categoryIds: [ObjectId]` (many-to-many)
+- One book may belong to multiple categories without duplication
+- Category archive/delete requires safe workflow (see §28.6.8)
+
+#### 28.6.5 Visibility & Publishing
+
+| Control | Effect |
+|---------|--------|
+| `status: draft` | Admin only |
+| `status: published` + `isVisible: true` | Public catalogue |
+| `status: hidden` | Stored, not shown publicly |
+| `status: archived` | Soft-deleted, admin recoverable |
+| `isFeatured: true` | Eligible for homepage/nav highlights |
+
+Hiding a category does **not** delete its books.
+
+#### 28.6.6 Admin UI — Catalogue → Categories
+
+- Visual category tree (expand/collapse)
+- Create, edit, rename, reorder, move, publish/unpublish, archive
+- Search by name, translation, slug, parent, status
+- Confirmation for destructive actions
+
+#### 28.6.7 Public Category Experience
+
+- Category listing page with hierarchy
+- Category detail page: `/categories/:slug`
+- Filter books by category in catalogue
+- Respects visibility and publish status
+
+#### 28.6.8 Archive / Delete Safety
+
+Before archive/delete, show book count:
+
+> This category contains 42 books.
+
+Admin chooses: move books to another category, remove assignments, or cancel. Never silently orphan books.
+
+#### 28.6.9 CRM Automation Integration
+
+Automation conditions reference **category IDs**, not hard-coded names:
+
+```text
+IF requestedBook.categoryIds CONTAINS <categoryId>
+THEN assignTeam = Religious Books Team
+```
+
+#### 28.6.10 Category Permissions
+
+| Action | Permission Key |
+|--------|----------------|
+| View | `categories.view` |
+| Create | `categories.create` |
+| Edit | `categories.edit` |
+| Reorder | `categories.reorder` |
+| Publish | `categories.publish` |
+| Hide | `categories.hide` |
+| Archive | `categories.archive` |
+| Delete | `categories.delete` |
+
 ---
 
 ## 29. CMS Architecture
@@ -2157,8 +2286,8 @@ Aligned with spec phases 2–11:
 | Phase | Scope | Exit Criteria |
 |-------|-------|---------------|
 | **1 — Architecture** | This document | ✓ Review approved |
-| **2 — Foundation** | Repo, auth, RBAC shell, UI system, public/admin shells | Login works, permissions enforced, builds pass |
-| **3 — CMS + Catalogue** | Books, categories, media, pages, homepage, i18n, visibility | Admin can publish book, visible on public site |
+| **2 — Foundation** | Repo, auth, RBAC shell, UI system, public/admin shells | ✓ Complete |
+| **3 — CMS + Catalogue** | Books, hierarchical categories, category translations & pages, page types, binding types, media, pages, homepage, sections, visibility, multilingual content, draft/preview/publish | Admin can manage category tree and publish book visible on public site |
 | **4 — CRM** | Customers, enquiries, timeline, search, deduplication | Enquiry created, customer matched, timeline works |
 | **5 — User Management** | Users, teams, roles, scopes, audit | Child admin cannot escalate, audit logs work |
 | **6 — CRM Productivity** | Macros, automations, SLA, follow-ups | Macro executes, automation triggers on event |
@@ -2199,7 +2328,7 @@ Complete permission keys to seed on first deploy:
 
 ```
 books.view, books.create, books.edit, books.archive, books.delete, books.publish, books.change_visibility
-categories.view, categories.create, categories.edit, categories.archive, categories.delete
+categories.view, categories.create, categories.edit, categories.reorder, categories.publish, categories.hide, categories.archive, categories.delete
 media.view, media.upload, media.edit, media.archive, media.delete
 customers.view, customers.create, customers.edit, customers.merge, customers.archive, customers.delete
 enquiries.view, enquiries.create, enquiries.edit, enquiries.assign, enquiries.reassign, enquiries.reply, enquiries.internal_note, enquiries.change_status, enquiries.change_priority, enquiries.close, enquiries.reopen, enquiries.delete

@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { connectDatabase } from './config/database';
 import { authRoutes } from './routes/auth.routes';
 import { adminRoutes, healthRoutes, publicRoutes } from './routes/index.routes';
+import { adminCategoryRoutes, publicCategoryRoutes } from './routes/category.routes';
 import { errorHandler, notFoundHandler, requestContext } from './middleware/error.middleware';
 
 let dbConnected = false;
@@ -55,7 +56,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes, { prefix: '/api/v1' });
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await app.register(adminCategoryRoutes, { prefix: '/api/v1/admin/categories' });
   await app.register(publicRoutes, { prefix: '/api/v1/public' });
+  await app.register(publicCategoryRoutes, { prefix: '/api/v1/public/categories' });
 
   return app;
 }
