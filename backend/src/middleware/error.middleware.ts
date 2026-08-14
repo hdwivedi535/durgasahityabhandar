@@ -17,6 +17,20 @@ export function errorHandler(
   reply: FastifyReply,
 ) {
   const statusCode = error.statusCode ?? 500;
+  if (statusCode === 429) {
+    const payload = error as Error & {
+      statusCode?: number;
+      error?: { code?: string; message?: string };
+    };
+    return reply.status(429).send({
+      error: {
+        code: payload.error?.code ?? 'RATE_LIMITED',
+        message:
+          payload.error?.message ?? 'Too many enquiry submissions. Try again shortly.',
+        requestId: request.requestId,
+      },
+    });
+  }
   reply.status(statusCode).send({
     error: {
       code: 'INTERNAL_ERROR',

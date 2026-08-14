@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetchWithToken } from '@/lib/api-client';
+import { getErrorMessage } from '@/lib/errors';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import type { EnquiryDashboardCounts } from '@dsb/shared';
 
 interface DashboardData {
   message: string;
   user: string;
   modules: string[];
+  counts?: EnquiryDashboardCounts;
 }
 
 export default function AdminDashboardPage() {
@@ -20,49 +23,56 @@ export default function AdminDashboardPage() {
     if (!accessToken) return;
     apiFetchWithToken<DashboardData>('/admin/dashboard', accessToken)
       .then(setData)
-      .catch(() => setError('Unable to load dashboard'));
+      .catch((err) => setError(getErrorMessage(err, 'Unable to load dashboard')));
   }, [accessToken]);
+
+  const counts = data?.counts;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="mt-1 text-muted">CRM overview — Phase 2 foundation</p>
+        <p className="mt-1 text-muted">Enquiry pipeline</p>
       </div>
 
+      {error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {['New', 'Open', 'Pending', 'Unassigned'].map((label) => (
-          <Card key={label}>
+        {(counts?.byStatus ?? []).slice(0, 6).map((row) => (
+          <Card key={row.statusId}>
             <CardContent className="pt-5">
-              <p className="text-sm text-muted">{label}</p>
-              <p className="mt-2 text-3xl font-semibold">—</p>
+              <p className="text-sm text-muted">{row.name}</p>
+              <p className="mt-2 text-3xl font-semibold">{row.count}</p>
             </CardContent>
           </Card>
         ))}
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm text-muted">Unassigned</p>
+            <p className="mt-2 text-3xl font-semibold">{counts?.unassigned ?? '—'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm text-muted">Needs review</p>
+            <p className="mt-2 text-3xl font-semibold">{counts?.needsReview ?? '—'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm text-muted">Follow-ups due</p>
+            <p className="mt-2 text-3xl font-semibold">{counts?.followUpsDue ?? '—'}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <h2 className="font-medium">API Connection</h2>
-        </CardHeader>
-        <CardContent>
-          {error && <p className="text-red-600">{error}</p>}
-          {data && (
-            <div className="space-y-2 text-sm">
-              <p>{data.message}</p>
-              <p>
-                <span className="text-muted">Modules: </span>
-                {data.modules.join(', ')}
-              </p>
-            </div>
-          )}
-          {!data && !error && <p className="text-muted">Loading…</p>}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h2 className="font-medium">Your Access</h2>
+          <h2 className="font-medium">Your access</h2>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted">Roles: {user?.roleSlugs.join(', ')}</p>

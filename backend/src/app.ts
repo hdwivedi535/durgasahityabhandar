@@ -12,6 +12,14 @@ import { adminLookupRoutes } from './routes/lookup.routes';
 import { adminCmsRoutes, publicCmsRoutes } from './routes/cms.routes';
 import { adminFeatureRoutes } from './routes/feature.routes';
 import { errorHandler, notFoundHandler, requestContext } from './middleware/error.middleware';
+import { adminCustomerRoutes } from './routes/customer.routes';
+import {
+  adminCrmConfigRoutes,
+  adminEnquiryRoutes,
+  adminUserOptionRoutes,
+  publicEnquiryRoutes,
+} from './routes/enquiry.routes';
+import { registerRateLimit } from './plugins/rate-limit';
 
 let dbConnected = false;
 
@@ -35,7 +43,11 @@ function stripServicePrefix(url: string): string {
 export async function buildApp(): Promise<FastifyInstance> {
   await ensureDatabase();
 
-  const app = Fastify({ logger: env.NODE_ENV === 'development' });
+  const app = Fastify({
+    logger: env.NODE_ENV === 'development',
+    // Vercel and other proxies set X-Forwarded-For. Required so rate-limit uses client IP.
+    trustProxy: true,
+  });
 
   app.addHook('onRequest', (request, _reply, done) => {
     const original = request.raw.url ?? request.url;
@@ -64,6 +76,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true,
   });
   await app.register(cookie);
+  await registerRateLimit(app);
 
   app.addHook('onRequest', requestContext);
   app.setNotFoundHandler(notFoundHandler);
@@ -77,10 +90,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(adminLookupRoutes, { prefix: '/api/v1/admin/lookups' });
   await app.register(adminCmsRoutes, { prefix: '/api/v1/admin/website' });
   await app.register(adminFeatureRoutes, { prefix: '/api/v1/admin/features' });
+  await app.register(adminCrmConfigRoutes, { prefix: '/api/v1/admin/crm-config' });
+  await app.register(adminCustomerRoutes, { prefix: '/api/v1/admin/customers' });
+  await app.register(adminEnquiryRoutes, { prefix: '/api/v1/admin/enquiries' });
+  await app.register(adminUserOptionRoutes, { prefix: '/api/v1/admin/users' });
   await app.register(publicRoutes, { prefix: '/api/v1/public' });
   await app.register(publicCategoryRoutes, { prefix: '/api/v1/public/categories' });
   await app.register(publicBookRoutes, { prefix: '/api/v1/public/books' });
   await app.register(publicCmsRoutes, { prefix: '/api/v1/public' });
+  await app.register(publicEnquiryRoutes, { prefix: '/api/v1/public' });
 
   return app;
 }

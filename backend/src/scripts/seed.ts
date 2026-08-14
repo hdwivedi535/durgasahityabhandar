@@ -106,10 +106,12 @@ async function main() {
   const { ensureDefaultLookups } = await import('../services/lookup.service');
   const { ensureFeatureToggles } = await import('../services/feature.service');
   const { ensureCmsDefaults } = await import('../services/cms.service');
+  const { ensureCrmConfig } = await import('../services/crm-config.service');
   await ensureDefaultLookups();
   await ensureFeatureToggles();
   await ensureCmsDefaults();
-  console.log('Catalogue lookups, feature toggles, and CMS defaults ensured.');
+  await ensureCrmConfig();
+  console.log('Catalogue lookups, feature toggles, CMS, and CRM config defaults ensured.');
 
   console.log('Seed complete.');
   await disconnectDatabase();

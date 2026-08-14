@@ -254,7 +254,7 @@ docs/         Architecture documentation
 | 1 — Architecture | Complete |
 | 2 — Foundation | Complete |
 | 3 — CMS + Catalogue | Complete — categories, books, lookups, CMS pages/homepage, visibility, public catalogue |
-| 4 — CRM | Planned |
+| 4 — CRM | Complete — customers, enquiries, timeline, search, deduplication |
 
 See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for full architecture.
 
