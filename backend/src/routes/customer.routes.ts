@@ -1,5 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { env } from '../config/env';
 import { authenticate, requirePermission } from '../middleware/auth.middleware';
+import { AiError } from '../services/enquiry-ai.service';
+import { generateCustomerSummary } from '../services/customer-ai.service';
 import {
   CustomerError,
   archiveCustomer,
@@ -19,7 +22,20 @@ import {
   mergeSchema,
 } from '../validators/crm.validator';
 
+function aiErrorStatus(code: string): number {
+  if (code === 'AI_DISABLED' || code === 'AI_FORBIDDEN') return 403;
+  if (code === 'AI_BUDGET_EXCEEDED' || code === 'AI_RATE_LIMITED') return 429;
+  if (code === 'AI_NOT_CONFIGURED') return 503;
+  if (code === 'AI_TIMEOUT') return 504;
+  return 502;
+}
+
 function handleCrmError(err: unknown, reply: FastifyReply) {
+  if (err instanceof AiError) {
+    return reply.status(aiErrorStatus(err.code)).send({
+      error: { code: err.code, message: err.message },
+    });
+  }
   if (err instanceof PhoneError || err instanceof CustomerError) {
     const status =
       err.code === 'NOT_FOUND'
@@ -120,6 +136,27 @@ export async function adminCustomerRoutes(app: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const data = await getCustomer(id);
+        return reply.send({ data });
+      } catch (err) {
+        return handleCrmError(err, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/:id/ai/summary',
+    { preHandler: [authenticate, requirePermission('customers.generate_ai')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { id } = request.params as { id: string };
+        const data = await generateCustomerSummary(id, request.user?.id, {
+          config: {
+            provider: env.AI_PROVIDER,
+            hasApiKey: Boolean(env.AI_API_KEY),
+            dailyTokenBudget: env.AI_DAILY_TOKEN_BUDGET,
+          },
+          maxOutputTokens: env.AI_MAX_OUTPUT_TOKENS,
+        });
         return reply.send({ data });
       } catch (err) {
         return handleCrmError(err, reply);

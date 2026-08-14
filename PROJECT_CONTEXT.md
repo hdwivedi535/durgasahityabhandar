@@ -9,6 +9,7 @@ B2B religious book **catalogue + enquiry CRM**. Not e-commerce. Repo is the sour
 - Branch: `main`.
 - Phase 4 CRM implemented: customers, enquiries, append-only timeline, dedupe, public form, admin inbox.
 - Phase 5 slice 1 **Checkpoint 6 (Admin UI for score + summary) complete** — consumes CP2/CP3 APIs; `crm_ai` still off; no live provider calls.
+- Phase 5 **Checkpoint 4 (Customer AI summary) complete** — backend generate + AiInsight storage; `crm_ai` still off; no live provider calls; no customer AI UI.
 - Public enquiry rate limit uses Fastify `trustProxy: true` + `request.ip` (Vercel `X-Forwarded-For`). Do not use socket remote address.
 
 ## Stack and layout
@@ -25,7 +26,7 @@ npm workspaces: `shared/` → `backend/` (Fastify + MongoDB) → `frontend/` (Ne
 
 **Production:** two Vercel projects. Standalone backend: **do not** set `API_PATH_PREFIX`. Frontend: `NEXT_PUBLIC_API_URL=https://durgasahityabhandar-backend.vercel.app/api/v1`.
 
-Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run seed` → `npm run dev`. Re-seed after Phase 4/5 foundation to pick up `enquiries.generate_ai` and `crm_ai`.
+Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run seed` → `npm run dev`. Re-seed after Phase 4/5 foundation to pick up `enquiries.generate_ai`, `customers.generate_ai`, and `crm_ai`.
 
 ## Roadmap
 
@@ -35,7 +36,7 @@ Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run see
 | 2 Foundation | Complete |
 | 3 CMS + catalogue | Complete |
 | 4 CRM | Complete |
-| 5 CRM Intelligence (first slice) | In progress — CP1–CP3 and CP6 done |
+| 5 CRM Intelligence (first slice) | In progress — CP1–CP3, CP6, and CP4 done |
 | Later | User management, communication, tracking — **do not start** until approved |
 
 Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intelligence on top of Phase 4.
@@ -52,11 +53,11 @@ Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intel
 
 **Customer/business country and phone country/dial code are independent fields and must never be inferred from one another.** Nepal location + India (+91) phone is valid; India location + Nepal (+977) phone is valid. Future WhatsApp must use `phoneCountry` / E.164, not business `country`.
 
-Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, `enquiry-ai-summary`, plus existing catalogue and AI foundation tests.
+Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, `enquiry-ai-summary`, `customer-ai-summary`, plus existing catalogue and AI foundation tests.
 
 ## Phase 5 first slice (approved)
 
-Checkpoints: **1 Foundation** → **2 Heuristic lead scoring** → **3 Enquiry AI summary** → **6 Admin UI (enquiry score + summary only)**. Stop after each for approval.
+Checkpoints: **1 Foundation** → **2 Heuristic lead scoring** → **3 Enquiry AI summary** → **6 Admin UI (enquiry score + summary only)** → **4 Customer AI summary (backend only)**. Stop after each for approval.
 
 **CP1 done:** permission `enquiries.generate_ai`; `crm_ai` default off; env placeholders; AI DTOs/models/budget helpers; tests `ai-foundation`, `ai-storage`.
 
@@ -87,9 +88,20 @@ Rules (base 30): review +20; overdue follow-up +25; missing follow-up +8 (new/co
 - Button requires `enquiries.generate_ai` (super-admin included). Frontend never calls a provider; errors map `403`, `AI_DISABLED`, `AI_NOT_CONFIGURED`, `AI_BUDGET_EXCEEDED`, provider failure.
 - Defaults unchanged: `crm_ai` off, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`.
 
-**Remaining this slice:** none. Broader Phase 5 (including later CP4/CP5 work) stays out of scope until approved.
+**CP4 — Customer AI Summary (approved, backend only):**
 
-**Next slice (not this work):** customer summaries, reply/follow-up/priority suggestions, inbox score sorting.
+- Scope: generate a customer summary from **existing Customer fields only**. Missing/empty fields are omitted; the prompt forbids invention (no fabricated contact, location, interests, order/enquiry history, or preferences).
+- Endpoint: `POST /api/v1/admin/customers/:id/ai/summary` — auth + `customers.generate_ai` (new; not `enquiries.generate_ai`).
+- Storage: `AiRun` kind `customer_summary` (append) + `AiInsight` upsert `{ kind: customer_summary, targetType: customer }`. Customer document is not written. Repeat generation appends a run and upserts the insight.
+- GET customer detail may include stored `aiSummary` from `AiInsight` (no admin UI in this checkpoint).
+- Flow reuses CP1/CP3: `crm_ai` on → provider available → daily budget → mock/injected adapter. Failures: `AI_DISABLED` (403), `AI_NOT_CONFIGURED` (503), `AI_BUDGET_EXCEEDED` (429). `resolveProductionAdapter` stays null.
+- Defaults unchanged: `crm_ai` off, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`.
+- Tests (`customer-ai-summary`) use mocks only.
+- Exclusions: no customer AI UI, reply/follow-up/priority suggestions, inbox sorting, or live provider.
+
+**Remaining this slice:** none until a later checkpoint is approved. Do not invent CP5.
+
+**Later (not this work):** reply/follow-up/priority suggestions, inbox score sorting, customer summary UI.
 
 ## Out of scope (do not add yet)
 
@@ -100,9 +112,9 @@ WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomou
 ## Constraints
 
 - Do not commit secrets. Backend Vercel: `MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`, `NODE_ENV`. Do not set a real `AI_API_KEY` until approved.
-- Seed Atlas after pulling Phase 5 CP1 (`npm run seed`) so `enquiries.generate_ai` and `crm_ai` exist.
+- Seed Atlas after pulling Phase 5 CP1/CP4 (`npm run seed`) so `enquiries.generate_ai`, `customers.generate_ai`, and `crm_ai` exist.
 - Password special characters in Atlas URIs must be URL-encoded.
 
 ## Next task
 
-Wait for approval before any further Phase 5 work (including CP4/CP5 or additional AI features).
+Wait for approval before any further Phase 5 work (including CP5 or additional AI features). Do not invent CP5.

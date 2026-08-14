@@ -11,6 +11,7 @@ import { Customer, type ICustomer } from '../models/customer.model';
 import { CustomerEvent } from '../models/customer-event.model';
 import { Enquiry } from '../models/enquiry.model';
 import { EnquiryEvent } from '../models/enquiry-event.model';
+import { getCustomerAiSummary } from './customer-ai.service';
 import { decideMatch, type MatchCandidate } from './customer-match';
 import { normalizeEmail, normalizePhone, normalizeCountry, callingCodeFor, PhoneError } from '../utils/phone';
 import { nextCustomerNumber } from '../utils/sequence';
@@ -356,13 +357,15 @@ export async function listCustomers(query: {
 
 export async function getCustomer(id: string): Promise<CustomerDetailDto> {
   const doc = await resolveLiveCustomer(id);
-  const [events, enquiries] = await Promise.all([
+  const [events, enquiries, aiSummary] = await Promise.all([
     CustomerEvent.find({ customerId: doc._id }).sort({ createdAt: 1 }),
     Enquiry.find({ customerId: doc._id, isArchived: false }).sort({ createdAt: -1 }).limit(20),
+    getCustomerAiSummary(doc._id.toString()),
   ]);
   return {
     ...toDto(doc),
     timeline: events.map(toEventDto),
+    aiSummary,
     recentEnquiries: enquiries.map((e) => ({
       id: e._id.toString(),
       enquiryNumber: e.enquiryNumber,

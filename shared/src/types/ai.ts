@@ -80,6 +80,13 @@ export interface GenerateEnquirySummaryResponseDto {
   run: AiRunDto;
 }
 
+export type CustomerAiSummaryDto = EnquiryAiSummaryDto;
+
+export interface GenerateCustomerSummaryResponseDto {
+  summary: CustomerAiSummaryDto;
+  run: AiRunDto;
+}
+
 export interface AiRunDto {
   id: string;
   kind: AiRunKind;
