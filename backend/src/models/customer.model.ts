@@ -52,17 +52,24 @@ const customerSchema = new Schema<ICustomer>(
   { timestamps: true },
 );
 
-customerSchema.index({ phoneNormalized: 1 }, {
-  unique: true,
-  partialFilterExpression: { mergedIntoId: { $exists: false } },
-});
+customerSchema.index(
+  { phoneNormalized: 1 },
+  {
+    unique: true,
+    // Equality only: $exists:false is rejected by MongoDB partial indexes ($not $exists).
+    // needsReview:false keeps Phase 4 ambiguous public creates (duplicate phone, flagged for review)
+    // out of the unique set; merged rows are excluded via mergedIntoId: null.
+    partialFilterExpression: { mergedIntoId: null, needsReview: false },
+  },
+);
 customerSchema.index(
   { emailNormalized: 1 },
   {
     unique: true,
     partialFilterExpression: {
       emailNormalized: { $exists: true, $gt: '' },
-      mergedIntoId: { $exists: false },
+      mergedIntoId: null,
+      needsReview: false,
     },
   },
 );

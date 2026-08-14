@@ -176,6 +176,47 @@ describe('customer identity (C3)', () => {
     });
     expect(linked.customer.id).toBe(survivor.id);
   });
+
+  it('indexes unique phoneNormalized only for unmerged customers', async () => {
+    await Customer.syncIndexes();
+    const indexes = await Customer.collection.indexes();
+    const phoneIdx = indexes.find((idx) => idx.name === 'phoneNormalized_1');
+    expect(phoneIdx?.unique).toBe(true);
+    expect(phoneIdx?.partialFilterExpression).toEqual({ mergedIntoId: null, needsReview: false });
+    expect(JSON.stringify(phoneIdx?.partialFilterExpression)).not.toMatch(/\$exists/);
+
+    const survivor = await createCustomer({
+      businessName: 'Keep',
+      contactName: 'Ada',
+      phone: '9876543210',
+      country: 'IN',
+    });
+    const loser = await createCustomer({
+      businessName: 'Drop',
+      contactName: 'Bob',
+      phone: '9123456789',
+      country: 'IN',
+    });
+    await mergeCustomers(survivor.id, loser.id);
+
+    const reused = await createCustomer({
+      businessName: 'New Shop',
+      contactName: 'Cara',
+      phone: '9123456789',
+      country: 'IN',
+    });
+    expect(reused.id).not.toBe(loser.id);
+    expect(reused.phoneNormalized).toBe(loser.phoneNormalized);
+
+    await expect(
+      createCustomer({
+        businessName: 'Dup',
+        contactName: 'Dan',
+        phone: '9876543210',
+        country: 'NP',
+      }),
+    ).rejects.toMatchObject({ code: 'DUPLICATE_CUSTOMER' });
+  });
 });
 
 describe('enquiry timeline (C4)', () => {
