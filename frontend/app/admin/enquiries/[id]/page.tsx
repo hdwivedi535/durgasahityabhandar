@@ -7,18 +7,25 @@ import type { CrmConfigDto, EnquiryDetailDto, UserOptionDto } from '@dsb/shared'
 import { useAuth } from '@/lib/auth-context';
 import { apiFetchWithToken } from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/errors';
+import { getAiActionMessage } from '@/lib/ai-errors';
+import { generateEnquirySummary } from '@/lib/enquiry-ai-api';
+import { userHasPermission } from '@/lib/rbac';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
+import { EnquiryLeadScoreCard } from '@/components/admin/enquiry-lead-score-card';
+import { EnquiryAiSummaryCard } from '@/components/admin/enquiry-ai-summary-card';
 import { getCountry, nationalNumberFromE164 } from '@dsb/shared';
 
 export default function AdminEnquiryDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [enquiry, setEnquiry] = useState<EnquiryDetailDto | null>(null);
   const [config, setConfig] = useState<CrmConfigDto[]>([]);
   const [users, setUsers] = useState<UserOptionDto[]>([]);
   const [error, setError] = useState('');
+  const [summaryError, setSummaryError] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [note, setNote] = useState('');
   const [noteType, setNoteType] = useState<'agent' | 'internal_note'>('agent');
   const [contactForm, setContactForm] = useState({
@@ -78,6 +85,21 @@ export default function AdminEnquiryDetailPage() {
     e.preventDefault();
     await post('/messages', { type: noteType, content: note });
     setNote('');
+  }
+
+  async function onGenerateSummary() {
+    if (!accessToken || !id || generatingSummary) return;
+    setSummaryError('');
+    setGeneratingSummary(true);
+    try {
+      const data = await generateEnquirySummary(id, accessToken);
+      setEnquiry((current) => (current ? { ...current, aiSummary: data.summary } : current));
+      await load();
+    } catch (err) {
+      setSummaryError(getAiActionMessage(err));
+    } finally {
+      setGeneratingSummary(false);
+    }
   }
 
   if (!enquiry && !error) return <p className="text-muted">Loading…</p>;
@@ -152,6 +174,19 @@ export default function AdminEnquiryDetailPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <EnquiryLeadScoreCard enquiry={enquiry} />
+            <EnquiryAiSummaryCard
+              summary={enquiry.aiSummary}
+              canGenerate={userHasPermission(user, 'enquiries.generate_ai')}
+              generating={generatingSummary}
+              error={summaryError}
+              onGenerate={() => {
+                void onGenerateSummary();
+              }}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">

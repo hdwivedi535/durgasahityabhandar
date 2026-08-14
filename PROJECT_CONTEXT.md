@@ -8,7 +8,7 @@ B2B religious book **catalogue + enquiry CRM**. Not e-commerce. Repo is the sour
 
 - Branch: `main`.
 - Phase 4 CRM implemented: customers, enquiries, append-only timeline, dedupe, public form, admin inbox.
-- Phase 5 slice 1 **Checkpoint 3 (Enquiry AI summary) complete** — mock/injected adapter only; `crm_ai` still off; no live provider calls.
+- Phase 5 slice 1 **Checkpoint 6 (Admin UI for score + summary) complete** — consumes CP2/CP3 APIs; `crm_ai` still off; no live provider calls.
 - Public enquiry rate limit uses Fastify `trustProxy: true` + `request.ip` (Vercel `X-Forwarded-For`). Do not use socket remote address.
 
 ## Stack and layout
@@ -35,7 +35,7 @@ Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run see
 | 2 Foundation | Complete |
 | 3 CMS + catalogue | Complete |
 | 4 CRM | Complete |
-| 5 CRM Intelligence (first slice) | In progress — CP1–CP3 done |
+| 5 CRM Intelligence (first slice) | In progress — CP1–CP3 and CP6 done |
 | Later | User management, communication, tracking — **do not start** until approved |
 
 Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intelligence on top of Phase 4.
@@ -80,7 +80,14 @@ Rules (base 30): review +20; overdue follow-up +25; missing follow-up +8 (new/co
 - Detail GET may include stored `aiSummary` from `AiInsight` (no admin UI in this checkpoint).
 - Tests (`enquiry-ai-summary`) use mocks only.
 
-**Remaining this slice:** CP6 enquiry detail UI for score + summary.
+**CP6 done (admin UI, enquiry score + summary only):**
+
+- Enquiry detail shows CRM `priority` separately from heuristic `leadScore` (score, suggested band, reasons). Does not write `priorityId`.
+- Stored `aiSummary` from GET; generate/regenerate calls existing `POST /api/v1/admin/enquiries/:id/ai/summary`.
+- Button requires `enquiries.generate_ai` (super-admin included). Frontend never calls a provider; errors map `403`, `AI_DISABLED`, `AI_NOT_CONFIGURED`, `AI_BUDGET_EXCEEDED`, provider failure.
+- Defaults unchanged: `crm_ai` off, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`.
+
+**Remaining this slice:** none. Broader Phase 5 (including later CP4/CP5 work) stays out of scope until approved.
 
 **Next slice (not this work):** customer summaries, reply/follow-up/priority suggestions, inbox score sorting.
 
@@ -98,4 +105,4 @@ WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomou
 
 ## Next task
 
-Wait for approval before Checkpoint 6 (admin UI for enquiry score + summary only).
+Wait for approval before any further Phase 5 work (including CP4/CP5 or additional AI features).
