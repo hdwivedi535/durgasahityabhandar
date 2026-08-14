@@ -20,6 +20,14 @@ const envSchema = z.object({
       if (v !== undefined) return v === 'true';
       return process.env.NODE_ENV === 'production';
     }),
+  // Real provider calls stay off until explicitly configured and approved.
+  AI_PROVIDER: z.enum(['none', 'openai_compatible']).default('none'),
+  AI_API_KEY: z.string().optional().default(''),
+  AI_BASE_URL: z.string().optional().default(''),
+  AI_MODEL: z.string().optional().default(''),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
+  AI_DAILY_TOKEN_BUDGET: z.coerce.number().int().nonnegative().default(0),
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(800),
 });
 
 const parsed = envSchema.safeParse(process.env);

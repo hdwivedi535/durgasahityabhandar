@@ -15,6 +15,7 @@ const FALLBACK: PublicSiteSettings = {
     pricing: true,
     public_tracking: true,
     maintenance_mode: false,
+    crm_ai: false,
   },
   languages: [{ code: 'en', name: 'English', isDefault: true }],
 };

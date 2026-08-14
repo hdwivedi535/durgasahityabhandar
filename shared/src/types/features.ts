@@ -7,6 +7,7 @@ export const FEATURE_TOGGLE_KEYS = [
   'pricing',
   'public_tracking',
   'maintenance_mode',
+  'crm_ai',
 ] as const;
 
 export type FeatureToggleKey = (typeof FEATURE_TOGGLE_KEYS)[number];

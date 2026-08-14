@@ -13,6 +13,11 @@ const DEFAULTS: FeatureToggleDto[] = [
   { key: 'pricing', enabled: true, description: 'Show book pricing when field visibility allows' },
   { key: 'public_tracking', enabled: true, description: 'Public enquiry tracking page' },
   { key: 'maintenance_mode', enabled: false, description: 'Show maintenance page on public site' },
+  {
+    key: 'crm_ai',
+    enabled: false,
+    description: 'CRM intelligence (summaries). Off until a provider is approved.',
+  },
 ];
 
 export async function ensureFeatureToggles(): Promise<void> {

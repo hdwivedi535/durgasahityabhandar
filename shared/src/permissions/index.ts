@@ -34,6 +34,7 @@ export const ACTIONS = {
     'close',
     'reopen',
     'delete',
+    'generate_ai',
   ],
   communication: ['view', 'send_email', 'send_whatsapp', 'retry', 'manage_templates'],
   macros: ['view', 'create', 'edit', 'delete', 'execute'],
