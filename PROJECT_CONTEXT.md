@@ -9,7 +9,8 @@ B2B religious book **catalogue + enquiry CRM**. Not e-commerce. Repo is the sour
 - Branch: `main`.
 - Phase 4 CRM implemented: customers, enquiries, append-only timeline, dedupe, public form, admin inbox.
 - Phase 5 slice 1 **Checkpoint 6 (Admin UI for score + summary) complete** — consumes CP2/CP3 APIs; `crm_ai` still off; no live provider calls.
-- Phase 5 **Checkpoint 4 (Customer AI summary) complete** — backend generate + AiInsight storage; `crm_ai` still off; no live provider calls; no customer AI UI.
+- Phase 5 **Checkpoint 4 (Customer AI summary) complete** — backend generate + AiInsight storage; `crm_ai` still off; no live provider; no customer AI UI in CP4.
+- Phase 5 **Checkpoint 5 (Customer AI summary admin UI) complete** — customer detail card consumes CP4 API; `crm_ai` still off; no live provider calls.
 - Public enquiry rate limit uses Fastify `trustProxy: true` + `request.ip` (Vercel `X-Forwarded-For`). Do not use socket remote address.
 
 ## Stack and layout
@@ -36,7 +37,7 @@ Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run see
 | 2 Foundation | Complete |
 | 3 CMS + catalogue | Complete |
 | 4 CRM | Complete |
-| 5 CRM Intelligence (first slice) | In progress — CP1–CP3, CP6, and CP4 done |
+| 5 CRM Intelligence (first slice) | In progress — CP1–CP6 and CP4–CP5 done |
 | Later | User management, communication, tracking — **do not start** until approved |
 
 Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intelligence on top of Phase 4.
@@ -57,7 +58,7 @@ Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-s
 
 ## Phase 5 first slice (approved)
 
-Checkpoints: **1 Foundation** → **2 Heuristic lead scoring** → **3 Enquiry AI summary** → **6 Admin UI (enquiry score + summary only)** → **4 Customer AI summary (backend only)**. Stop after each for approval.
+Checkpoints: **1 Foundation** → **2 Heuristic lead scoring** → **3 Enquiry AI summary** → **6 Admin UI (enquiry score + summary only)** → **4 Customer AI summary (backend)** → **5 Customer AI summary admin UI**. Stop after each for approval.
 
 **CP1 done:** permission `enquiries.generate_ai`; `crm_ai` default off; env placeholders; AI DTOs/models/budget helpers; tests `ai-foundation`, `ai-storage`.
 
@@ -97,11 +98,20 @@ Rules (base 30): review +20; overdue follow-up +25; missing follow-up +8 (new/co
 - Flow reuses CP1/CP3: `crm_ai` on → provider available → daily budget → mock/injected adapter. Failures: `AI_DISABLED` (403), `AI_NOT_CONFIGURED` (503), `AI_BUDGET_EXCEEDED` (429). `resolveProductionAdapter` stays null.
 - Defaults unchanged: `crm_ai` off, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`.
 - Tests (`customer-ai-summary`) use mocks only.
-- Exclusions: no customer AI UI, reply/follow-up/priority suggestions, inbox sorting, or live provider.
+- Exclusions for CP4: no customer AI UI, reply/follow-up/priority suggestions, inbox sorting, or live provider.
 
-**Remaining this slice:** none until a later checkpoint is approved. Do not invent CP5.
+**CP5 done (admin UI, customer summary only):**
 
-**Later (not this work):** reply/follow-up/priority suggestions, inbox score sorting, customer summary UI.
+- Customer detail shows stored `aiSummary` from GET; generate/regenerate calls existing `POST /api/v1/admin/customers/:id/ai/summary` (no new backend).
+- Button requires `customers.generate_ai` (super-admin included). Frontend never calls a provider; errors map `FORBIDDEN`, `AI_DISABLED`, `AI_NOT_CONFIGURED`, `AI_BUDGET_EXCEEDED`, `NOT_FOUND`, network/API failure via existing `getAiActionMessage`.
+- Does not write customer fields. Country and phone country remain independent.
+- Defaults unchanged: `crm_ai` off, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`.
+- Tests (`customer-ai-summary-ui`) use mocked API responses only.
+- Exclusions: reply/follow-up/priority suggestions, inbox score sorting, customer recommendations, live provider.
+
+**Remaining this slice:** none until a later checkpoint is approved.
+
+**Later (not this work):** reply/follow-up/priority suggestions, inbox score sorting.
 
 ## Out of scope (do not add yet)
 
@@ -117,4 +127,4 @@ WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomou
 
 ## Next task
 
-Wait for approval before any further Phase 5 work (including CP5 or additional AI features). Do not invent CP5.
+Wait for approval before any further Phase 5 work. Do not start reply, follow-up, or priority suggestions, inbox sorting, or a live provider.

@@ -8,16 +8,22 @@ import { getCountry, nationalNumberFromE164 } from '@dsb/shared';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetchWithToken } from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/errors';
+import { getAiActionMessage } from '@/lib/ai-errors';
+import { generateCustomerSummary } from '@/lib/customer-ai-api';
+import { userHasPermission } from '@/lib/rbac';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
+import { CustomerAiSummaryCard } from '@/components/admin/customer-ai-summary-card';
 
 export default function AdminCustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [customer, setCustomer] = useState<CustomerDetailDto | null>(null);
   const [error, setError] = useState('');
+  const [summaryError, setSummaryError] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     businessName: '',
@@ -62,11 +68,31 @@ export default function AdminCustomerDetailPage() {
           email: form.email || undefined,
         }),
       });
-      setCustomer({ ...customer!, ...data, recentEnquiries: customer?.recentEnquiries ?? [], timeline: customer?.timeline ?? [] });
+      setCustomer({
+        ...customer!,
+        ...data,
+        recentEnquiries: customer?.recentEnquiries ?? [],
+        timeline: customer?.timeline ?? [],
+        aiSummary: customer?.aiSummary,
+      });
     } catch (err) {
       setError(getErrorMessage(err, 'Could not save customer.'));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onGenerateSummary() {
+    if (!accessToken || !id || generatingSummary) return;
+    setSummaryError('');
+    setGeneratingSummary(true);
+    try {
+      const data = await generateCustomerSummary(id, accessToken);
+      setCustomer((current) => (current ? { ...current, aiSummary: data.summary } : current));
+    } catch (err) {
+      setSummaryError(getAiActionMessage(err));
+    } finally {
+      setGeneratingSummary(false);
     }
   }
 
@@ -106,6 +132,16 @@ export default function AdminCustomerDetailPage() {
           {error}
         </p>
       )}
+
+      <CustomerAiSummaryCard
+        summary={customer.aiSummary}
+        canGenerate={userHasPermission(user, 'customers.generate_ai')}
+        generating={generatingSummary}
+        error={summaryError}
+        onGenerate={() => {
+          void onGenerateSummary();
+        }}
+      />
 
       <Card>
         <CardHeader>

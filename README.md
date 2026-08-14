@@ -255,7 +255,7 @@ docs/         Architecture documentation
 | 2 — Foundation | Complete |
 | 3 — CMS + Catalogue | Complete — categories, books, lookups, CMS pages/homepage, visibility, public catalogue |
 | 4 — CRM | Complete — customers, enquiries, timeline, search, deduplication |
-| 5 — CRM Intelligence | In progress — foundation, scoring, enquiry/customer summaries, admin enquiry score/summary UI (no live AI) |
+| 5 — CRM Intelligence | In progress — foundation, scoring, enquiry/customer summaries, admin enquiry and customer summary UI (no live AI) |
 
 See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for full architecture.
 

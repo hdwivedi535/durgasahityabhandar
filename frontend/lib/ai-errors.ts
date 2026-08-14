@@ -10,6 +10,8 @@ const AI_ACTION_MESSAGES: Record<string, string> = {
   AI_RATE_LIMITED: 'Too many AI requests. Try again shortly.',
   AI_TIMEOUT: 'The summary request timed out. Try again.',
   AI_PROVIDER_ERROR: 'Could not generate a summary. Try again later.',
+  NOT_FOUND: 'This record could not be found.',
+  NETWORK_ERROR: 'Could not reach the API. Try again.',
 };
 
 export function getAiActionMessage(error: unknown, fallback = 'Could not generate a summary.'): string {
