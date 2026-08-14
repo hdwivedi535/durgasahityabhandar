@@ -18,6 +18,8 @@ export interface IEnquiry extends Document {
   contactName: string;
   company: string;
   country: string;
+  phoneCountry: string;
+  phoneDialCode: string;
   phone: string;
   phoneNormalized: string;
   email?: string;
@@ -48,6 +50,8 @@ const enquirySchema = new Schema<IEnquiry>(
     contactName: { type: String, required: true, trim: true },
     company: { type: String, required: true, trim: true },
     country: { type: String, required: true, uppercase: true, trim: true },
+    phoneCountry: { type: String, required: true, uppercase: true, trim: true },
+    phoneDialCode: { type: String, required: true, trim: true },
     phone: { type: String, required: true },
     phoneNormalized: { type: String, required: true },
     email: { type: String, lowercase: true, trim: true },

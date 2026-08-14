@@ -42,15 +42,17 @@ Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intel
 
 ## Phase 4 in repo (do not re-implement)
 
-- Canonical phone: E.164 `phone` + `phoneNormalized` + `country` (future WhatsApp uses the same field).
-- Dedupe: exact `{ country, phoneNormalized }` or `emailNormalized`. Ambiguous public submit creates a **new** `needsReview` record (no silent merge).
+- Canonical phone: E.164 `phone` + `phoneNormalized` + `phoneCountry` + `phoneDialCode`. Business/location `country` is a **separate** ISO field and must never be inferred from the phone (or vice versa).
+- Duplicate detection uses normalized E.164 `phoneNormalized`, not business country. Ambiguous public submit creates a **new** `needsReview` record (no silent merge).
 - Enquiry statuses: New → Contacted → Follow-up Required → Quotation Sent → Negotiation → Won / Lost / Closed. Quotation Sent is a **status only**.
 - Enquiry priorities: `low`, `normal`, `high` (never `medium`).
 - Append-only `enquirymessages`, `enquiryevents`, `customerevents`.
 - Public `POST /api/v1/public/enquiries` (feature toggle + IP rate limit 10/min).
 - Admin customers/enquiries with explicit permissions; errors use `{ error: { code, message, details? } }`.
 
-Tests: `phone`, `customer-match`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, plus existing catalogue and AI foundation tests.
+**Customer/business country and phone country/dial code are independent fields and must never be inferred from one another.** Nepal location + India (+91) phone is valid; India location + Nepal (+977) phone is valid. Future WhatsApp must use `phoneCountry` / E.164, not business `country`.
+
+Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, plus existing catalogue and AI foundation tests.
 
 ## Phase 5 first slice (approved)
 

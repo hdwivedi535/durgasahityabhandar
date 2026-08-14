@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { apiFetch } from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/errors';
 import { useSiteSettings } from '@/lib/site-settings';
+import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
 
 export default function EnquiryPage() {
   return (
@@ -38,6 +39,7 @@ function EnquiryForm() {
   const [contactName, setContactName] = useState('');
   const [company, setCompany] = useState('');
   const [country, setCountry] = useState('IN');
+  const [phoneCountry, setPhoneCountry] = useState('IN');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState(
@@ -78,6 +80,7 @@ function EnquiryForm() {
           contactName,
           company,
           country,
+          phoneCountry,
           phone,
           email: email || undefined,
           message,
@@ -136,21 +139,14 @@ function EnquiryForm() {
               onChange={(e) => setCompany(e.target.value)}
               required
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Country (ISO)"
-                value={country}
-                onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                maxLength={2}
-                required
-              />
-              <Input
-                label="Phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
-            </div>
+            <CountrySelect label="Business / location country" value={country} onChange={setCountry} required />
+            <PhoneFields
+              phoneCountry={phoneCountry}
+              nationalNumber={phone}
+              onPhoneCountryChange={setPhoneCountry}
+              onNationalNumberChange={setPhone}
+              required
+            />
             <Input
               label="Email (optional)"
               type="email"

@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
 
 export default function AdminEnquiriesPage() {
   const { accessToken } = useAuth();
@@ -24,6 +25,7 @@ export default function AdminEnquiriesPage() {
     contactName: '',
     company: '',
     phone: '',
+    phoneCountry: 'IN',
     country: 'IN',
     email: '',
     message: '',
@@ -137,16 +139,17 @@ export default function AdminEnquiriesPage() {
                 onChange={(e) => setForm({ ...form, company: e.target.value })}
                 required
               />
-              <Input
-                label="Phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              <CountrySelect
+                label="Business / location country"
+                value={form.country}
+                onChange={(country) => setForm({ ...form, country })}
                 required
               />
-              <Input
-                label="Country"
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value.toUpperCase() })}
+              <PhoneFields
+                phoneCountry={form.phoneCountry}
+                nationalNumber={form.phone}
+                onPhoneCountryChange={(phoneCountry) => setForm({ ...form, phoneCountry })}
+                onNationalNumberChange={(phone) => setForm({ ...form, phone })}
                 required
               />
               <Input

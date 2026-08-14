@@ -10,6 +10,7 @@ export const publicEnquirySchema = z.object({
   contactName: z.string().min(1).max(120),
   company: z.string().min(1).max(200),
   country: z.string().length(2).optional(),
+  phoneCountry: z.string().length(2).optional(),
   phone: z.string().min(5).max(30),
   email: optionalEmail,
   message: z.string().min(1).max(8000),
@@ -22,6 +23,7 @@ export const adminCustomerCreateSchema = z.object({
   businessName: z.string().min(1).max(200),
   contactName: z.string().min(1).max(120),
   country: z.string().length(2).optional(),
+  phoneCountry: z.string().length(2).optional(),
   phone: z.string().min(5).max(30),
   email: optionalEmail,
   preferredLanguage: z.string().min(2).max(5).optional(),
@@ -42,6 +44,7 @@ export const adminCustomerUpdateSchema = adminCustomerCreateSchema
 
 export const matchQuerySchema = z.object({
   phone: z.string().min(5).max(30),
+  phoneCountry: z.string().length(2).optional(),
   country: z.string().length(2).optional(),
   email: optionalEmail,
 });
@@ -56,6 +59,7 @@ export const adminEnquiryCreateSchema = z.object({
   contactName: z.string().min(1).max(120),
   company: z.string().min(1).max(200),
   country: z.string().length(2).optional(),
+  phoneCountry: z.string().length(2).optional(),
   phone: z.string().min(5).max(30),
   email: optionalEmail,
   message: z.string().min(1).max(8000),
@@ -101,4 +105,7 @@ export const enquiryUpdateSchema = z.object({
   interestedCategoryIds: z.array(objectId).optional(),
   requirementText: z.string().max(4000).optional(),
   tags: z.array(z.string().max(40)).optional(),
+  country: z.string().length(2).optional(),
+  phoneCountry: z.string().length(2).optional(),
+  phone: z.string().min(5).max(30).optional(),
 });

@@ -9,6 +9,8 @@ import { apiFetchWithToken } from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
+import { getCountry, nationalNumberFromE164 } from '@dsb/shared';
 
 export default function AdminEnquiryDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,11 @@ export default function AdminEnquiryDetailPage() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [noteType, setNoteType] = useState<'agent' | 'internal_note'>('agent');
+  const [contactForm, setContactForm] = useState({
+    country: 'IN',
+    phoneCountry: 'IN',
+    phone: '',
+  });
 
   const load = useCallback(async () => {
     if (!accessToken || !id) return;
@@ -26,6 +33,11 @@ export default function AdminEnquiryDetailPage() {
     try {
       const data = await apiFetchWithToken<EnquiryDetailDto>(`/admin/enquiries/${id}`, accessToken);
       setEnquiry(data);
+      setContactForm({
+        country: data.country,
+        phoneCountry: data.phoneCountry,
+        phone: nationalNumberFromE164(data.phone, data.phoneCountry),
+      });
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to load enquiry.'));
     }
@@ -90,6 +102,13 @@ export default function AdminEnquiryDetailPage() {
               <h1 className="font-mono text-2xl font-semibold">{enquiry.enquiryNumber}</h1>
               <p className="mt-1 text-sm">
                 {enquiry.company} · {enquiry.contactName} · {enquiry.phone}
+              </p>
+              <p className="text-sm text-muted">
+                Location: {getCountry(enquiry.country)?.flag} {getCountry(enquiry.country)?.name ?? enquiry.country}
+                {' · '}
+                Phone: {getCountry(enquiry.phoneCountry)?.flag}{' '}
+                {getCountry(enquiry.phoneCountry)?.name ?? enquiry.phoneCountry} +
+                {enquiry.phoneDialCode}
               </p>
               {enquiry.needsReview && (
                 <p className="mt-1 text-sm text-amber-700">Needs review</p>
@@ -189,6 +208,40 @@ export default function AdminEnquiryDetailPage() {
                 <p>
                   <span className="text-muted">Source:</span> {enquiry.source}
                 </p>
+                <form
+                  className="space-y-3 border-t border-border pt-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!accessToken || !id) return;
+                    setError('');
+                    try {
+                      await apiFetchWithToken(`/admin/enquiries/${id}`, accessToken, {
+                        method: 'PATCH',
+                        body: JSON.stringify(contactForm),
+                      });
+                      await load();
+                    } catch (err) {
+                      setError(getErrorMessage(err, 'Could not update contact details.'));
+                    }
+                  }}
+                >
+                  <CountrySelect
+                    label="Business / location country"
+                    value={contactForm.country}
+                    onChange={(country) => setContactForm({ ...contactForm, country })}
+                    required
+                  />
+                  <PhoneFields
+                    phoneCountry={contactForm.phoneCountry}
+                    nationalNumber={contactForm.phone}
+                    onPhoneCountryChange={(phoneCountry) =>
+                      setContactForm({ ...contactForm, phoneCountry })
+                    }
+                    onNationalNumberChange={(phone) => setContactForm({ ...contactForm, phone })}
+                    required
+                  />
+                  <Button type="submit">Save contact details</Button>
+                </form>
                 <p>
                   <span className="text-muted">Requirement:</span>{' '}
                   {enquiry.requirementText || '—'}

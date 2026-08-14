@@ -1,4 +1,5 @@
-import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
+import { getCountryCallingCode, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
+import { dialCodeFor } from '@dsb/shared';
 
 export class PhoneError extends Error {
   constructor(
@@ -11,38 +12,49 @@ export class PhoneError extends Error {
 
 const COUNTRY_RE = /^[A-Z]{2}$/;
 
-export function normalizeCountry(country?: string): CountryCode {
-  const value = (country ?? 'IN').trim().toUpperCase();
+/** ISO country for business location or phone — never derived from the other field. */
+export function normalizeCountry(country?: string, fallback = 'IN'): CountryCode {
+  const value = (country ?? fallback).trim().toUpperCase();
   if (!COUNTRY_RE.test(value)) {
     throw new PhoneError('VALIDATION_ERROR', 'Country must be a 2-letter ISO code');
   }
   return value as CountryCode;
 }
 
+export function callingCodeFor(iso: CountryCode): string {
+  try {
+    return String(getCountryCallingCode(iso));
+  } catch {
+    return dialCodeFor(iso) ?? '';
+  }
+}
+
 export function normalizePhone(
   raw: string,
-  country?: string,
-): { e164: string; digits: string; country: CountryCode } {
+  phoneCountry?: string,
+): { e164: string; digits: string; phoneCountry: CountryCode; dialCode: string } {
   const trimmed = raw.trim();
   if (!trimmed) {
     throw new PhoneError('INVALID_PHONE', 'Phone number is required');
   }
 
-  const iso = normalizeCountry(country);
-  const parsed = parsePhoneNumberFromString(trimmed, iso);
-  if (parsed?.isValid()) {
-    const e164 = parsed.number;
-    return { e164, digits: e164.replace(/\D/g, ''), country: iso };
+  const defaultIso = normalizeCountry(phoneCountry);
+  const parsed =
+    parsePhoneNumberFromString(trimmed, defaultIso) ??
+    parsePhoneNumberFromString(trimmed.replace(/\D/g, ''), defaultIso);
+
+  if (!parsed?.isValid()) {
+    throw new PhoneError('INVALID_PHONE', 'Enter a valid phone number');
   }
 
-  const digitsOnly = trimmed.replace(/\D/g, '');
-  const retry = parsePhoneNumberFromString(digitsOnly, iso);
-  if (retry?.isValid()) {
-    const e164 = retry.number;
-    return { e164, digits: e164.replace(/\D/g, ''), country: iso };
-  }
-
-  throw new PhoneError('INVALID_PHONE', 'Enter a valid phone number');
+  const e164 = parsed.number;
+  const iso = (parsed.country ?? defaultIso) as CountryCode;
+  return {
+    e164,
+    digits: e164.replace(/\D/g, ''),
+    phoneCountry: iso,
+    dialCode: callingCodeFor(iso),
+  };
 }
 
 export function normalizeEmail(email?: string): string | undefined {

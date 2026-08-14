@@ -33,7 +33,7 @@ import {
   getStatusBySlug,
 } from './crm-config.service';
 import { nextEnquiryNumber } from '../utils/sequence';
-import { normalizeEmail, normalizePhone } from '../utils/phone';
+import { normalizeEmail, normalizePhone, normalizeCountry, callingCodeFor } from '../utils/phone';
 import { assignLeadScore, buildLeadScoreForEnquiry, toLeadScoreDto } from './lead-score.service';
 
 export class EnquiryError extends Error {
@@ -151,6 +151,8 @@ export async function toEnquiryDto(doc: IEnquiry): Promise<EnquiryDto> {
     contactName: doc.contactName,
     company: doc.company,
     country: doc.country,
+    phoneCountry: (doc.phoneCountry || doc.country || 'IN').toUpperCase(),
+    phoneDialCode: doc.phoneDialCode || callingCodeFor(normalizeCountry(doc.phoneCountry || doc.country)),
     phone: doc.phone,
     phoneNormalized: doc.phoneNormalized,
     email: doc.email,
@@ -179,6 +181,7 @@ export interface CreateEnquiryInput {
   contactName: string;
   company: string;
   phone: string;
+  phoneCountry?: string;
   country?: string;
   email?: string;
   preferredLanguage?: string;
@@ -202,6 +205,7 @@ export async function createEnquiry(input: CreateEnquiryInput, actor?: Actor): P
         businessName: input.company,
         contactName: input.contactName,
         phone: input.phone,
+        phoneCountry: input.phoneCountry,
         country: input.country,
         email: input.email,
         preferredLanguage: input.preferredLanguage,
@@ -217,7 +221,8 @@ export async function createEnquiry(input: CreateEnquiryInput, actor?: Actor): P
     throw err;
   }
 
-  const phone = normalizePhone(input.phone, input.country);
+  const phone = normalizePhone(input.phone, input.phoneCountry);
+  const businessCountry = normalizeCountry(input.country);
   const emailNormalized = normalizeEmail(input.email);
   const status = await getStatusBySlug('new');
   const priority = input.priorityId
@@ -240,7 +245,9 @@ export async function createEnquiry(input: CreateEnquiryInput, actor?: Actor): P
     assignedUserId: input.assignedUserId || undefined,
     contactName: input.contactName.trim(),
     company: input.company.trim(),
-    country: phone.country,
+    country: businessCountry,
+    phoneCountry: phone.phoneCountry,
+    phoneDialCode: phone.dialCode,
     phone: phone.e164,
     phoneNormalized: phone.digits,
     email: emailNormalized,
@@ -368,6 +375,9 @@ export async function updateEnquiry(
     requirementText: string;
     tags: string[];
     message: string;
+    country: string;
+    phoneCountry: string;
+    phone: string;
   }>,
   actor?: Actor,
 ): Promise<EnquiryDto> {
@@ -380,6 +390,17 @@ export async function updateEnquiry(
   }
   if (input.requirementText !== undefined) doc.requirementText = input.requirementText.trim();
   if (input.tags !== undefined) doc.tags = input.tags;
+  if (input.country !== undefined) doc.country = normalizeCountry(input.country);
+  if (input.phone !== undefined || input.phoneCountry !== undefined) {
+    const parsed = normalizePhone(
+      input.phone ?? doc.phone,
+      input.phoneCountry ?? doc.phoneCountry ?? doc.country,
+    );
+    doc.phoneCountry = parsed.phoneCountry;
+    doc.phoneDialCode = parsed.dialCode;
+    doc.phone = parsed.e164;
+    doc.phoneNormalized = parsed.digits;
+  }
   await assignLeadScore(doc);
   await doc.save();
   await EnquiryEvent.create({

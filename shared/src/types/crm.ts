@@ -25,6 +25,8 @@ export interface CustomerDto {
   businessName: string;
   contactName: string;
   country: string;
+  phoneCountry: string;
+  phoneDialCode: string;
   phone: string;
   phoneNormalized: string;
   email?: string;
@@ -84,6 +86,8 @@ export interface EnquiryDto {
   contactName: string;
   company: string;
   country: string;
+  phoneCountry: string;
+  phoneDialCode: string;
   phone: string;
   phoneNormalized: string;
   email?: string;

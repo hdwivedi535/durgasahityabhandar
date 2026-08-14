@@ -12,7 +12,7 @@ import { CustomerEvent } from '../models/customer-event.model';
 import { Enquiry } from '../models/enquiry.model';
 import { EnquiryEvent } from '../models/enquiry-event.model';
 import { decideMatch, type MatchCandidate } from './customer-match';
-import { normalizeEmail, normalizePhone, PhoneError } from '../utils/phone';
+import { normalizeEmail, normalizePhone, normalizeCountry, callingCodeFor, PhoneError } from '../utils/phone';
 import { nextCustomerNumber } from '../utils/sequence';
 
 export class CustomerError extends Error {
@@ -37,6 +37,8 @@ function toDto(doc: ICustomer): CustomerDto {
     businessName: doc.businessName,
     contactName: doc.contactName,
     country: doc.country,
+    phoneCountry: (doc.phoneCountry || doc.country || 'IN').toUpperCase(),
+    phoneDialCode: doc.phoneDialCode || callingCodeFor(normalizeCountry(doc.phoneCountry || doc.country)),
     phone: doc.phone,
     phoneNormalized: doc.phoneNormalized,
     email: doc.email,
@@ -105,11 +107,12 @@ export async function resolveLiveCustomer(id: string): Promise<ICustomer> {
   }
 }
 
-function identityFromInput(input: { phone: string; country?: string; email?: string }) {
-  const phone = normalizePhone(input.phone, input.country);
+function identityFromInput(input: { phone: string; phoneCountry?: string; email?: string }) {
+  const phone = normalizePhone(input.phone, input.phoneCountry);
   const emailNormalized = normalizeEmail(input.email);
   return {
-    country: phone.country,
+    phoneCountry: phone.phoneCountry,
+    phoneDialCode: phone.dialCode,
     phone: phone.e164,
     phoneNormalized: phone.digits,
     email: emailNormalized,
@@ -118,20 +121,16 @@ function identityFromInput(input: { phone: string; country?: string; email?: str
 }
 
 async function loadMatchCandidates(identity: {
-  country: string;
   phoneNormalized: string;
   emailNormalized?: string;
 }): Promise<MatchCandidate[]> {
-  const or: Record<string, unknown>[] = [
-    { country: identity.country, phoneNormalized: identity.phoneNormalized },
-  ];
+  const or: Record<string, unknown>[] = [{ phoneNormalized: identity.phoneNormalized }];
   if (identity.emailNormalized) {
     or.push({ emailNormalized: identity.emailNormalized });
   }
   const docs = await Customer.find({ $or: or });
   return docs.map((d) => ({
     id: d._id.toString(),
-    country: d.country,
     phoneNormalized: d.phoneNormalized,
     emailNormalized: d.emailNormalized,
     mergedIntoId: d.mergedIntoId?.toString(),
@@ -140,14 +139,13 @@ async function loadMatchCandidates(identity: {
 
 export async function matchCustomers(input: {
   phone: string;
-  country?: string;
+  phoneCountry?: string;
   email?: string;
 }): Promise<{ decision: ReturnType<typeof decideMatch>; matches: CustomerMatch[] }> {
   const identity = identityFromInput(input);
   const candidates = await loadMatchCandidates(identity);
   const decision = decideMatch(
     {
-      country: identity.country,
       phoneNormalized: identity.phoneNormalized,
       emailNormalized: identity.emailNormalized,
     },
@@ -182,6 +180,7 @@ export async function createCustomer(
     businessName: string;
     contactName: string;
     phone: string;
+    phoneCountry?: string;
     country?: string;
     email?: string;
     preferredLanguage?: string;
@@ -211,7 +210,9 @@ export async function createCustomer(
       customerNumber: await nextCustomerNumber(),
       businessName: input.businessName.trim(),
       contactName: input.contactName.trim(),
-      country: identity.country,
+      country: normalizeCountry(input.country),
+      phoneCountry: identity.phoneCountry,
+      phoneDialCode: identity.phoneDialCode,
       phone: identity.phone,
       phoneNormalized: identity.phoneNormalized,
       email: identity.email,
@@ -253,6 +254,7 @@ export async function resolveOrCreateCustomer(
     businessName: string;
     contactName: string;
     phone: string;
+    phoneCountry?: string;
     country?: string;
     email?: string;
     preferredLanguage?: string;
@@ -266,14 +268,12 @@ export async function resolveOrCreateCustomer(
     const identity = identityFromInput(input);
     if (
       live.phoneNormalized !== identity.phoneNormalized ||
-      live.country !== identity.country ||
       (identity.emailNormalized &&
         live.emailNormalized &&
         live.emailNormalized !== identity.emailNormalized)
     ) {
       const otherPhone = await Customer.findOne({
         _id: { $ne: live._id },
-        country: identity.country,
         phoneNormalized: identity.phoneNormalized,
         mergedIntoId: { $exists: false },
       });
@@ -374,6 +374,8 @@ export async function getCustomer(id: string): Promise<CustomerDetailDto> {
       contactName: e.contactName,
       company: e.company,
       country: e.country,
+      phoneCountry: e.phoneCountry || e.country,
+      phoneDialCode: e.phoneDialCode || '',
       phone: e.phone,
       phoneNormalized: e.phoneNormalized,
       email: e.email,
@@ -400,6 +402,7 @@ export async function updateCustomer(
     businessName: string;
     contactName: string;
     phone: string;
+    phoneCountry?: string;
     country: string;
     email: string;
     preferredLanguage: string;
@@ -417,13 +420,17 @@ export async function updateCustomer(
     email: doc.email,
     needsReview: doc.needsReview,
   };
-  if (input.phone || input.country) {
+  if (input.country !== undefined) {
+    doc.country = normalizeCountry(input.country);
+  }
+  if (input.phone !== undefined || input.phoneCountry !== undefined) {
     const identity = identityFromInput({
       phone: input.phone ?? doc.phone,
-      country: input.country ?? doc.country,
+      phoneCountry: input.phoneCountry ?? doc.phoneCountry ?? doc.country,
       email: input.email ?? doc.email,
     });
-    doc.country = identity.country;
+    doc.phoneCountry = identity.phoneCountry;
+    doc.phoneDialCode = identity.phoneDialCode;
     doc.phone = identity.phone;
     doc.phoneNormalized = identity.phoneNormalized;
     if (input.email !== undefined) {

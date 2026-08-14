@@ -293,6 +293,7 @@ export async function publicEnquiryRoutes(app: FastifyInstance) {
           contactName: parsed.data.contactName,
           company: parsed.data.company,
           country: parsed.data.country,
+          phoneCountry: parsed.data.phoneCountry,
           phone: parsed.data.phone,
           email: parsed.data.email || undefined,
           message: parsed.data.message,

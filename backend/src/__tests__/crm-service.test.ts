@@ -84,9 +84,11 @@ describe('customer identity (C3)', () => {
       businessName: 'NP Shop',
       contactName: 'Ada',
       phone: '9841234567',
+      phoneCountry: 'NP',
       country: 'NP',
     });
     expect(np.country).toBe('NP');
+    expect(np.phoneCountry).toBe('NP');
   });
 
   it('matches email at 80 and phone at 100', async () => {
@@ -97,11 +99,11 @@ describe('customer identity (C3)', () => {
       country: 'IN',
       email: 'ada@abc.com',
     });
-    const phoneHit = await matchCustomers({ phone: '9876543210', country: 'IN' });
+    const phoneHit = await matchCustomers({ phone: '9876543210', phoneCountry: 'IN' });
     expect(phoneHit.decision.kind).toBe('exact');
     const emailHit = await matchCustomers({
       phone: '9999999999',
-      country: 'IN',
+      phoneCountry: 'IN',
       email: 'ada@abc.com',
     });
     expect(emailHit.decision.kind).toBe('exact');

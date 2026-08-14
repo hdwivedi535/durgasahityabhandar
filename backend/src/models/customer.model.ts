@@ -5,6 +5,8 @@ export interface ICustomer extends Document {
   businessName: string;
   contactName: string;
   country: string;
+  phoneCountry: string;
+  phoneDialCode: string;
   phone: string;
   phoneNormalized: string;
   email?: string;
@@ -26,6 +28,8 @@ const customerSchema = new Schema<ICustomer>(
     businessName: { type: String, required: true, trim: true },
     contactName: { type: String, required: true, trim: true },
     country: { type: String, required: true, uppercase: true, trim: true, default: 'IN' },
+    phoneCountry: { type: String, required: true, uppercase: true, trim: true, default: 'IN' },
+    phoneDialCode: { type: String, required: true, trim: true, default: '91' },
     phone: { type: String, required: true },
     phoneNormalized: { type: String, required: true },
     email: { type: String, lowercase: true, trim: true },
@@ -48,10 +52,10 @@ const customerSchema = new Schema<ICustomer>(
   { timestamps: true },
 );
 
-customerSchema.index(
-  { country: 1, phoneNormalized: 1 },
-  { unique: true, partialFilterExpression: { mergedIntoId: { $exists: false } } },
-);
+customerSchema.index({ phoneNormalized: 1 }, {
+  unique: true,
+  partialFilterExpression: { mergedIntoId: { $exists: false } },
+});
 customerSchema.index(
   { emailNormalized: 1 },
   {

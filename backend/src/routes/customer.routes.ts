@@ -78,7 +78,7 @@ export async function adminCustomerRoutes(app: FastifyInstance) {
       try {
         const data = await matchCustomers({
           phone: parsed.data.phone,
-          country: parsed.data.country,
+          phoneCountry: parsed.data.phoneCountry,
           email: parsed.data.email || undefined,
         });
         return reply.send({ data: { decision: data.decision.kind, matches: data.matches } });

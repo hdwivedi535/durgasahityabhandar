@@ -8,13 +8,11 @@ import {
 
 const a: MatchCandidate = {
   id: 'a',
-  country: 'IN',
   phoneNormalized: '919876543210',
   emailNormalized: 'a@shop.com',
 };
 const b: MatchCandidate = {
   id: 'b',
-  country: 'IN',
   phoneNormalized: '911112223333',
   emailNormalized: 'b@shop.com',
 };
@@ -22,7 +20,7 @@ const b: MatchCandidate = {
 describe('decideMatch', () => {
   it('scores exact phone+country at 100 and auto-links', () => {
     const decision = decideMatch(
-      { country: 'IN', phoneNormalized: '919876543210', emailNormalized: 'other@x.com' },
+      { phoneNormalized: '919876543210', emailNormalized: 'other@x.com' },
       [a, b],
     );
     expect(decision.kind).toBe('exact');
@@ -35,7 +33,7 @@ describe('decideMatch', () => {
 
   it('scores exact email at 80 when phone does not match', () => {
     const decision = decideMatch(
-      { country: 'IN', phoneNormalized: '919999999999', emailNormalized: 'b@shop.com' },
+      { phoneNormalized: '919999999999', emailNormalized: 'b@shop.com' },
       [a, b],
     );
     expect(decision.kind).toBe('exact');
@@ -48,7 +46,7 @@ describe('decideMatch', () => {
 
   it('is ambiguous when phone hits A and email hits B', () => {
     const decision = decideMatch(
-      { country: 'IN', phoneNormalized: '919876543210', emailNormalized: 'b@shop.com' },
+      { phoneNormalized: '919876543210', emailNormalized: 'b@shop.com' },
       [a, b],
     );
     expect(decision.kind).toBe('ambiguous');
@@ -58,9 +56,9 @@ describe('decideMatch', () => {
     }
   });
 
-  it('does not match across country', () => {
+  it('does not match a different E.164 phone', () => {
     const decision = decideMatch(
-      { country: 'NP', phoneNormalized: '919876543210' },
+      { phoneNormalized: '9779841234567' },
       [a],
     );
     expect(decision.kind).toBe('none');
@@ -73,7 +71,7 @@ describe('decideMatch', () => {
       mergedIntoId: 'a',
     };
     const decision = decideMatch(
-      { country: 'IN', phoneNormalized: '919876543210' },
+      { phoneNormalized: '919876543210' },
       [loser, a],
     );
     expect(decision.kind).toBe('exact');

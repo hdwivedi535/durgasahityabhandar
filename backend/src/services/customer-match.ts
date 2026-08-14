@@ -1,12 +1,10 @@
 export interface IdentityInput {
-  country: string;
   phoneNormalized: string;
   emailNormalized?: string;
 }
 
 export interface MatchCandidate {
   id: string;
-  country: string;
   phoneNormalized: string;
   emailNormalized?: string;
   mergedIntoId?: string;
@@ -43,10 +41,7 @@ export function followMergedId(
 function scoreCandidate(input: IdentityInput, candidate: MatchCandidate): ScoredMatch | null {
   const reasons: string[] = [];
   let score = 0;
-  if (
-    candidate.country === input.country &&
-    candidate.phoneNormalized === input.phoneNormalized
-  ) {
+  if (candidate.phoneNormalized === input.phoneNormalized) {
     score = 100;
     reasons.push('phone');
   }

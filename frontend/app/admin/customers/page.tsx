@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CountrySelect, PhoneFields } from '@/components/ui/country-phone-fields';
 
 export default function AdminCustomersPage() {
   const { accessToken } = useAuth();
@@ -22,6 +23,7 @@ export default function AdminCustomersPage() {
     businessName: '',
     contactName: '',
     phone: '',
+    phoneCountry: 'IN',
     country: 'IN',
     email: '',
   });
@@ -58,7 +60,7 @@ export default function AdminCustomersPage() {
         body: JSON.stringify({ ...form, email: form.email || undefined }),
       });
       setShowCreate(false);
-      setForm({ businessName: '', contactName: '', phone: '', country: 'IN', email: '' });
+      setForm({ businessName: '', contactName: '', phone: '', phoneCountry: 'IN', country: 'IN', email: '' });
       await load();
     } catch (err) {
       setError(getErrorMessage(err, 'Could not create customer.'));
@@ -114,16 +116,17 @@ export default function AdminCustomersPage() {
                 onChange={(e) => setForm({ ...form, contactName: e.target.value })}
                 required
               />
-              <Input
-                label="Phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              <CountrySelect
+                label="Business / location country"
+                value={form.country}
+                onChange={(country) => setForm({ ...form, country })}
                 required
               />
-              <Input
-                label="Country"
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value.toUpperCase() })}
+              <PhoneFields
+                phoneCountry={form.phoneCountry}
+                nationalNumber={form.phone}
+                onPhoneCountryChange={(phoneCountry) => setForm({ ...form, phoneCountry })}
+                onNationalNumberChange={(phone) => setForm({ ...form, phone })}
                 required
               />
               <Input
@@ -160,7 +163,7 @@ export default function AdminCustomersPage() {
                 )}
               </div>
               <p className="text-sm text-muted">
-                {c.contactName} · {c.phone} · {c.country}
+                {c.contactName} · {c.phone} · {c.country} / phone {c.phoneCountry}
               </p>
             </Link>
           ))}

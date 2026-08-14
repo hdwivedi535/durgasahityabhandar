@@ -8,17 +8,19 @@ describe('normalizePhone', () => {
     const c = normalizePhone('09876543210', 'IN');
     expect(a.e164).toBe('+919876543210');
     expect(a.digits).toBe('919876543210');
-    expect(a.country).toBe('IN');
+    expect(a.phoneCountry).toBe('IN');
+    expect(a.dialCode).toBe('91');
     expect(b).toEqual(a);
     expect(c).toEqual(a);
   });
 
-  it('treats the same national number in Nepal as a different identity', () => {
+  it('validates Nepal vs India phone independently of business country', () => {
     const inNumber = normalizePhone('9841234567', 'IN');
     const npNumber = normalizePhone('9841234567', 'NP');
     expect(inNumber.e164).not.toBe(npNumber.e164);
-    expect(inNumber.country).toBe('IN');
-    expect(npNumber.country).toBe('NP');
+    expect(inNumber.phoneCountry).toBe('IN');
+    expect(npNumber.phoneCountry).toBe('NP');
+    expect(npNumber.dialCode).toBe('977');
   });
 
   it('rejects invalid phone with INVALID_PHONE', () => {
