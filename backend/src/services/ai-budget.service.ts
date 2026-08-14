@@ -4,6 +4,12 @@ export function utcDateKey(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Rough token estimate for pre-flight budget checks (no tokenizer / no provider). */
+export function estimateTokenCount(text: string): number {
+  if (!text) return 0;
+  return Math.max(1, Math.ceil(text.length / 4));
+}
+
 /** Budget 0 (default) blocks any token use until a daily budget is approved. */
 export function wouldExceedBudget(tokensUsed: number, adding: number, dailyBudget: number): boolean {
   if (adding <= 0) return false;

@@ -75,6 +75,11 @@ export interface EnquiryAiDto {
   summary?: EnquiryAiSummaryDto;
 }
 
+export interface GenerateEnquirySummaryResponseDto {
+  summary: EnquiryAiSummaryDto;
+  run: AiRunDto;
+}
+
 export interface AiRunDto {
   id: string;
   kind: AiRunKind;

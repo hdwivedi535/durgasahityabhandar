@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_PERMISSIONS, FEATURE_TOGGLE_KEYS } from '@dsb/shared';
 import { isRealProviderEnabled } from '../services/ai-config';
-import { utcDateKey, wouldExceedBudget } from '../services/ai-budget.service';
+import { utcDateKey, wouldExceedBudget, estimateTokenCount } from '../services/ai-budget.service';
 
 describe('Phase 5 foundation', () => {
   it('includes enquiries.generate_ai', () => {
@@ -44,5 +44,6 @@ describe('Phase 5 foundation', () => {
     expect(wouldExceedBudget(90, 20, 100)).toBe(true);
     expect(wouldExceedBudget(50, 20, 100)).toBe(false);
     expect(utcDateKey(new Date('2026-08-14T12:00:00.000Z'))).toBe('2026-08-14');
+    expect(estimateTokenCount('abcd')).toBe(1);
   });
 });

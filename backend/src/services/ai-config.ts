@@ -10,3 +10,7 @@ export interface AiRuntimeConfig {
 export function isRealProviderEnabled(config: AiRuntimeConfig): boolean {
   return config.provider !== 'none' && config.hasApiKey && config.dailyTokenBudget > 0;
 }
+
+export function isProviderConfigured(config: AiRuntimeConfig): boolean {
+  return config.provider !== 'none' && config.hasApiKey;
+}

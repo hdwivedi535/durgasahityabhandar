@@ -359,10 +359,13 @@ export async function getEnquiry(id: string): Promise<EnquiryDetailDto> {
     ...messages.map((m) => ({ kind: 'message' as const, item: toMessageDto(m) })),
     ...events.map((e) => ({ kind: 'event' as const, item: toEventDto(e) })),
   ].sort((a, b) => a.item.createdAt.localeCompare(b.item.createdAt));
+  const { getEnquiryAiSummary } = await import('./enquiry-ai.service');
+  const aiSummary = await getEnquiryAiSummary(id);
   return {
     ...dto,
     customer: customer ? toCustomerDto(customer) : undefined,
     timeline,
+    aiSummary,
   };
 }
 

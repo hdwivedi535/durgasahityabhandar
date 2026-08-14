@@ -1,4 +1,4 @@
-import type { LeadScoreDto } from './ai';
+import type { EnquiryAiSummaryDto, LeadScoreDto } from './ai';
 
 export type EnquirySource = 'website' | 'manual';
 
@@ -134,6 +134,7 @@ export type TimelineItem =
 
 export interface EnquiryDetailDto extends EnquiryDto {
   timeline: TimelineItem[];
+  aiSummary?: EnquiryAiSummaryDto;
 }
 
 export interface CustomerDetailDto extends CustomerDto {
