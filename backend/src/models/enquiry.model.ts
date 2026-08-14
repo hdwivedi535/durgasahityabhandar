@@ -1,5 +1,12 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
-import type { EnquirySource } from '@dsb/shared';
+import type { EnquiryPrioritySlug, EnquirySource, LeadScoreReasonDto } from '@dsb/shared';
+
+export interface IEnquiryLeadScore {
+  score: number;
+  suggestedPriority: EnquiryPrioritySlug;
+  reasons: LeadScoreReasonDto[];
+  calculatedAt: Date;
+}
 
 export interface IEnquiry extends Document {
   enquiryNumber: string;
@@ -25,6 +32,7 @@ export interface IEnquiry extends Document {
   tags: string[];
   isArchived: boolean;
   closedAt?: Date;
+  leadScore?: IEnquiryLeadScore;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +62,19 @@ const enquirySchema = new Schema<IEnquiry>(
     tags: [{ type: String }],
     isArchived: { type: Boolean, default: false },
     closedAt: { type: Date },
+    leadScore: {
+      score: { type: Number },
+      suggestedPriority: { type: String, enum: ['low', 'normal', 'high'] },
+      reasons: [
+        {
+          code: { type: String },
+          points: { type: Number },
+          label: { type: String },
+          _id: false,
+        },
+      ],
+      calculatedAt: { type: Date },
+    },
   },
   { timestamps: true },
 );

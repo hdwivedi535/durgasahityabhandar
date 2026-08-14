@@ -33,6 +33,10 @@ export const AI_ERROR_CODES = [
 
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
 
+export const ENQUIRY_PRIORITY_SLUGS = ['low', 'normal', 'high'] as const;
+
+export type EnquiryPrioritySlug = (typeof ENQUIRY_PRIORITY_SLUGS)[number];
+
 export type LeadScoreReasonCode =
   | 'needs_review'
   | 'follow_up_overdue'
@@ -53,7 +57,9 @@ export interface LeadScoreReasonDto {
 
 export interface LeadScoreDto {
   score: number;
+  suggestedPriority: EnquiryPrioritySlug;
   reasons: LeadScoreReasonDto[];
+  calculatedAt: string;
 }
 
 export interface EnquiryAiSummaryDto {

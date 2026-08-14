@@ -7,6 +7,7 @@ import type {
   EnquiryListResult,
   EnquiryMessageDto,
   EnquiryMessageType,
+  LeadScoreDto,
   TimelineItem,
   UserOptionDto,
 } from '@dsb/shared';
@@ -33,6 +34,7 @@ import {
 } from './crm-config.service';
 import { nextEnquiryNumber } from '../utils/sequence';
 import { normalizeEmail, normalizePhone } from '../utils/phone';
+import { assignLeadScore, buildLeadScoreForEnquiry, toLeadScoreDto } from './lead-score.service';
 
 export class EnquiryError extends Error {
   constructor(
@@ -129,6 +131,12 @@ export async function toEnquiryDto(doc: IEnquiry): Promise<EnquiryDto> {
     userNameMap(doc.assignedUserId ? [doc.assignedUserId.toString()] : []),
   ]);
   const assignedUserId = doc.assignedUserId?.toString();
+  let leadScore: LeadScoreDto | undefined;
+  if (doc.leadScore?.calculatedAt) {
+    leadScore = toLeadScoreDto(doc.leadScore);
+  } else {
+    leadScore = await buildLeadScoreForEnquiry(doc);
+  }
   return {
     id: doc._id.toString(),
     enquiryNumber: doc.enquiryNumber,
@@ -159,6 +167,7 @@ export async function toEnquiryDto(doc: IEnquiry): Promise<EnquiryDto> {
     closedAt: doc.closedAt?.toISOString(),
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
+    leadScore,
   };
 }
 
@@ -278,6 +287,8 @@ export async function createEnquiry(input: CreateEnquiryInput, actor?: Actor): P
     actor,
   );
   await bumpCustomerEnquiryStats(resolved.customer.id, { total: 1, open: 1 });
+  await assignLeadScore(doc);
+  await doc.save();
 
   return toEnquiryDto(doc);
 }
@@ -369,6 +380,7 @@ export async function updateEnquiry(
   }
   if (input.requirementText !== undefined) doc.requirementText = input.requirementText.trim();
   if (input.tags !== undefined) doc.tags = input.tags;
+  await assignLeadScore(doc);
   await doc.save();
   await EnquiryEvent.create({
     enquiryId: doc._id,
@@ -399,6 +411,7 @@ export async function changeEnquiryStatus(
   } else {
     doc.closedAt = undefined;
   }
+  await assignLeadScore(doc);
   await doc.save();
   await EnquiryEvent.create({
     enquiryId: doc._id,
@@ -455,6 +468,7 @@ export async function assignEnquiry(
   } else {
     doc.assignedUserId = undefined;
   }
+  await assignLeadScore(doc);
   await doc.save();
   await EnquiryEvent.create({
     enquiryId: doc._id,
@@ -474,6 +488,7 @@ export async function setFollowUp(
   const doc = await Enquiry.findById(id);
   if (!doc) throw new EnquiryError('NOT_FOUND', 'Enquiry not found');
   doc.nextFollowUpAt = nextFollowUpAt ? new Date(nextFollowUpAt) : undefined;
+  await assignLeadScore(doc);
   await doc.save();
   await EnquiryEvent.create({
     enquiryId: doc._id,

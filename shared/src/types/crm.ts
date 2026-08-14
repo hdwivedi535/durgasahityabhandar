@@ -1,3 +1,5 @@
+import type { LeadScoreDto } from './ai';
+
 export type EnquirySource = 'website' | 'manual';
 
 export type EnquiryMessageType = 'customer' | 'agent' | 'internal_note';
@@ -98,6 +100,7 @@ export interface EnquiryDto {
   closedAt?: string;
   createdAt: string;
   updatedAt: string;
+  leadScore?: LeadScoreDto;
 }
 
 export interface EnquiryMessageDto {
