@@ -13,6 +13,11 @@ import {
   mergeCustomers,
   updateCustomer,
 } from '../services/customer.service';
+import {
+  requestPaymentDateExtension,
+  resolvePaymentDateExtension,
+  updateCustomerCreditProfile,
+} from '../services/credit-profile.service';
 import { PhoneError } from '../utils/phone';
 import {
   adminCustomerCreateSchema,
@@ -20,6 +25,9 @@ import {
   customerListQuerySchema,
   matchQuerySchema,
   mergeSchema,
+  creditProfileUpdateSchema,
+  paymentDateExtensionRequestSchema,
+  paymentDateExtensionResolveSchema,
 } from '../validators/crm.validator';
 
 function aiErrorStatus(code: string): number {
@@ -136,6 +144,66 @@ export async function adminCustomerRoutes(app: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const data = await getCustomer(id);
+        return reply.send({ data });
+      } catch (err) {
+        return handleCrmError(err, reply);
+      }
+    },
+  );
+
+  app.put(
+    '/:id/credit-profile',
+    { preHandler: [authenticate, requirePermission('customers.manage_credit')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = creditProfileUpdateSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid input', details: parsed.error.flatten() },
+        });
+      }
+      try {
+        const { id } = request.params as { id: string };
+        const data = await updateCustomerCreditProfile(id, parsed.data, actor(request));
+        return reply.send({ data });
+      } catch (err) {
+        return handleCrmError(err, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/:id/credit-profile/payment-date-extension/request',
+    { preHandler: [authenticate, requirePermission('customers.edit')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = paymentDateExtensionRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid input', details: parsed.error.flatten() },
+        });
+      }
+      try {
+        const { id } = request.params as { id: string };
+        const data = await requestPaymentDateExtension(id, parsed.data, actor(request));
+        return reply.send({ data });
+      } catch (err) {
+        return handleCrmError(err, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/:id/credit-profile/payment-date-extension/resolve',
+    { preHandler: [authenticate, requirePermission('customers.manage_credit')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = paymentDateExtensionResolveSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: { code: 'VALIDATION_ERROR', message: 'Invalid input', details: parsed.error.flatten() },
+        });
+      }
+      try {
+        const { id } = request.params as { id: string };
+        const data = await resolvePaymentDateExtension(id, parsed.data, actor(request));
         return reply.send({ data });
       } catch (err) {
         return handleCrmError(err, reply);

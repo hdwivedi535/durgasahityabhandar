@@ -1,4 +1,5 @@
 import type { CustomerAiSummaryDto, EnquiryAiSummaryDto, LeadScoreDto } from './ai';
+import type { CustomerCreditProfileDto } from './commercial';
 
 export type EnquirySource = 'website' | 'manual';
 
@@ -38,6 +39,7 @@ export interface CustomerDto {
   needsReview: boolean;
   mergedIntoId?: string;
   isArchived: boolean;
+  creditProfile: CustomerCreditProfileDto;
   createdAt: string;
   updatedAt: string;
 }

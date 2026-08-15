@@ -5,9 +5,11 @@ import type {
   CustomerListResult,
   CustomerMatch,
   CustomerLocation,
+  CustomerCreditProfileDto,
 } from '@dsb/shared';
+import { CREDIT_LIMIT_CURRENCY, defaultCustomerCreditProfile } from '@dsb/shared';
 import mongoose from 'mongoose';
-import { Customer, type ICustomer } from '../models/customer.model';
+import { Customer, type ICustomer, type ICustomerCreditProfile, defaultCreditProfileDoc } from '../models/customer.model';
 import { CustomerEvent } from '../models/customer-event.model';
 import { Enquiry } from '../models/enquiry.model';
 import { EnquiryEvent } from '../models/enquiry-event.model';
@@ -29,6 +31,44 @@ export class CustomerError extends Error {
 export interface Actor {
   id?: string;
   name?: string;
+}
+
+function iso(d?: Date): string | undefined {
+  return d ? d.toISOString() : undefined;
+}
+
+export function toCreditProfileDto(profile?: ICustomerCreditProfile | null): CustomerCreditProfileDto {
+  const fallback = defaultCustomerCreditProfile();
+  if (!profile) return fallback;
+  const pending = profile.pendingPaymentDateRequest;
+  return {
+    relationshipType: profile.relationshipType ?? 'new',
+    creditStatus: profile.creditStatus ?? 'no_credit',
+    creditLimitMinor: profile.creditLimitMinor,
+    creditLimitCurrency: profile.creditLimitCurrency || CREDIT_LIMIT_CURRENCY,
+    paymentTerms: {
+      summary: profile.paymentTerms?.summary || fallback.paymentTerms.summary,
+      requirePaymentBeforeDispatch: profile.paymentTerms?.requirePaymentBeforeDispatch ?? true,
+      dueDaysAfterDelivery: profile.paymentTerms?.dueDaysAfterDelivery,
+      approvedPaymentDueOn: iso(profile.paymentTerms?.approvedPaymentDueOn),
+    },
+    isActive: profile.isActive !== false,
+    reviewAt: iso(profile.reviewAt),
+    expiresAt: iso(profile.expiresAt),
+    approvedById: profile.approvedById?.toString(),
+    approvedByName: profile.approvedByName,
+    approvedAt: iso(profile.approvedAt),
+    version: profile.version || 1,
+    pendingPaymentDateRequest: pending
+      ? {
+          requestedDueOn: pending.requestedDueOn.toISOString(),
+          requestedAt: pending.requestedAt.toISOString(),
+          reason: pending.reason,
+          requestedById: pending.requestedById?.toString(),
+          requestedByName: pending.requestedByName,
+        }
+      : undefined,
+  };
 }
 
 function toDto(doc: ICustomer): CustomerDto {
@@ -54,6 +94,7 @@ function toDto(doc: ICustomer): CustomerDto {
     needsReview: doc.needsReview,
     mergedIntoId: doc.mergedIntoId?.toString(),
     isArchived: doc.isArchived,
+    creditProfile: toCreditProfileDto(doc.creditProfile),
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -223,13 +264,29 @@ export async function createCustomer(
       tags: input.tags ?? [],
       needsReview: Boolean(input.needsReview),
       stats: { totalEnquiries: 0, openEnquiries: 0 },
+      creditProfile: defaultCreditProfileDoc(),
     });
-    await appendCustomerEvent(
-      doc._id.toString(),
-      'created',
-      { needsReview: doc.needsReview },
-      actor,
-    );
+    await CustomerEvent.insertMany([
+      {
+        customerId: doc._id,
+        eventType: 'created',
+        data: { needsReview: doc.needsReview },
+        actorId: actor?.id,
+        actorName: actor?.name,
+      },
+      {
+        customerId: doc._id,
+        eventType: 'credit_profile_changed',
+        data: {
+          version: 1,
+          previous: null,
+          next: toCreditProfileDto(doc.creditProfile),
+          reason: 'Initial customer profile',
+        },
+        actorId: actor?.id,
+        actorName: actor?.name,
+      },
+    ]);
     if (doc.needsReview) {
       await appendCustomerEvent(doc._id.toString(), 'needs_review', { source: 'create' }, actor);
     }

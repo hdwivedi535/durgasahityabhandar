@@ -1,32 +1,76 @@
-# Commercial & Payment Terms Engine
+# Product Phase 3 — Commercial & Payment Terms Engine
 
-**Status:** Requirements locked — implementation not started  
-**Engineering phase:** 6 (after CRM Intelligence)  
-**Product name:** Phase 3 — Commercial & Payment Engine  
+**Product phase:** 3  
+**Status:** P3.1 complete — stop until P3.2 is approved  
+**Do not call this Engineering Phase 6.** Historical repo “Phase 3” still means CMS + catalogue. This document is the **product** Commercial Engine.
 
-This module is a dedicated business-logic phase. It is not a small CRM field add-on. Catalogue, enquiry CRM, and CRM intelligence stay as they are. WhatsApp, voice, and autonomous AI remain later.
+This module is a dedicated business-logic phase. It is not a small CRM field add-on. Catalogue, enquiry CRM, and CRM intelligence (AI **CP1–CP6**) stay as they are. WhatsApp, voice, and autonomous AI remain later product phases.
 
-**Non-negotiable split:** authorised humans control commercial commitments. AI may read the latest approved customer-facing terms and explain them. AI must never decide, invent, or modify totals, discounts, advance %, credit, or payment schedules.
+**Non-negotiable split:** authorised humans control commercial commitments. Future AI may read the latest approved customer-facing terms and explain them. AI must never decide, invent, or modify totals, discounts, advance %, credit, payment dates, or payment schedules.
 
 ---
 
-## 1. Why this is its own phase
+## Product roadmap vs AI checkpoints
+
+| Kind | Name | Meaning |
+|------|------|---------|
+| Product Phase 3 | Commercial & Payment Terms Engine | This work |
+| P3.1 … P3.8 | Product Phase 3 checkpoints | Slices of this engine |
+| AI CP1–CP6 | CRM Intelligence (repo Phase 5) | Completed; do not renumber |
+
+| Checkpoint | Scope | Status |
+|------------|--------|--------|
+| P3.1 | Customer Credit Profile + History | Complete |
+| P3.2 | Quotations & Commercial Amounts | Not started |
+| P3.3 | Discount + Discount History | Not started |
+| P3.4 | Advance Payment + Balance | Not started |
+| P3.5 | Payment Schedules & Tracking | Not started |
+| P3.6 | Commercial Approval + Order Confirmation | Not started |
+| P3.7 | Payment Reminders + Escalation | Not started |
+| P3.8 | Commercial UI + Audit Review | Not started |
+
+---
+
+## Permanent rule — payment-date extension
+
+A customer requesting a later payment date does **not** change the approved date.
+
+```
+Customer request
+→ payment-extension request detected
+→ Admin escalation / live transfer (later phases)
+→ Admin reviews
+→ Admin approves or rejects
+→ if approved, Admin manually enters the NEW date
+→ new date becomes effective
+→ previous date remains in history
+```
+
+- Customer request ≠ approval.
+- AI acknowledgement ≠ approval.
+- Only authorised Admin / Sub-Admin approval **plus** a recorded new date can change `approvedPaymentDueOn`.
+
+P3.1 records requests and authorised decisions. It does **not** implement voice/AI transfer.
+
+---
+
+## 1. Why this is its own product phase
 
 Current enquiry status **Quotation Sent** is a workflow label only. There is no quotation amount, discount, advance, payment schedule, or credit profile in the system.
 
 This phase adds:
 
-- Quotations with manual financial controls
+- Quotations with manual financial controls (P3.2+)
 - Versioned commercial audit trail
-- Customer-specific payment / credit profiles
-- Payment tracking, reminders, and escalation
-- Order confirmation gate
+- Customer-specific payment / credit profiles (**P3.1**)
+- Payment tracking, reminders, and escalation (later P3 checkpoints)
+- Order confirmation gate (P3.6)
 
 Later voice/chat AI (product Phase 5) will query this engine. It will not invent commercial terms.
 
 ---
 
-## 2. Order / quotation financial controls
+## 2. Order / quotation financial controls (P3.2–P3.4 — not P3.1)
 
 ### 2.1 Total amount
 
@@ -77,6 +121,7 @@ The following are versioned / audited. Old values are never silently replaced:
 - Advance %
 - Payment schedule
 - Negotiated terms (free-text commercial notes that were approved)
+- Customer credit profile and approved payment date (P3.1)
 
 If someone asks “why was this order confirmed at this amount?”, Admin must see:
 
@@ -86,7 +131,7 @@ The current approved snapshot is what customer-facing AI and communications may 
 
 ---
 
-## 4. Customer-specific payment / credit profile
+## 4. Customer-specific payment / credit profile (P3.1)
 
 Company default payment policy alone is not enough. Each customer has a **Payment Profile**. Customer type does **not** automatically grant credit.
 
@@ -94,20 +139,22 @@ Company default payment policy alone is not enough. Each customer has a **Paymen
 
 | Field | Values / notes |
 |-------|----------------|
-| Customer type | `new` \| `existing` \| `vip` |
+| Customer relationship type | `new` \| `existing` \| `vip` |
 | Credit status | `no_credit` \| `approved_credit` \| `credit_suspended` |
-| Approved payment terms | Human-authored terms (e.g. “100% before dispatch”, “3 days after delivery”) |
-| Credit limit | Optional; required when credit is approved |
-| Custom payment schedule | Optional override of the default schedule shape |
-| Approved by / approved on | Actor + timestamp of the current approval |
-| Status | Active / inactive (or equivalent) |
+| Approved payment terms | Human-authored; structured summary + flags. Not inferred from type. |
+| Credit limit | Integer minor units (paise) + currency; required when credit is approved |
+| Approved payment due date | Optional; only changed by authorised approval of a new date |
+| Approved by / approved on | Actor + timestamp of the current commercial approval |
+| Active / inactive | Current profile in force or not |
+| Review / expiry | Optional review and expiry timestamps |
 
 ### 4.2 Approval rule
 
 - **Existing customer ≠ eligible for credit.**
 - **VIP ≠ eligible for credit.**
-- Eligible for credit only when: customer record exists **and** Admin / authorised Sub-Admin has **explicitly approved** credit terms.
+- Eligible for credit only when: customer record exists **and** Admin / authorised Sub-Admin has **explicitly approved** credit terms (`customers.manage_credit`).
 - New / first-time customers default to **no credit**: payment before dispatch / delivery.
+- Do not infer credit from customer age, order count, VIP flag, enquiry history, AI, or customer claims.
 - AI and email communicate the **approved** profile. They do not infer terms from “I am an old customer.”
 
 ### 4.3 Illustrative policies (examples, not automatic)
@@ -120,26 +167,13 @@ These are examples of what an Admin *may* approve. They are not granted by type 
 | Existing | Delivery first → payment within 3 days |
 | VIP | Delivery first → payment within 15 days |
 
-### 4.4 CRM display
+### 4.4 History
 
-The customer record must show **why** they have those terms, for example:
-
-```
-Customer: ABC Books
-Customer Type: Existing
-Credit Approved: YES
-Credit Limit: ₹5,00,000
-Payment Terms: 3 days after delivery
-Approved By: Admin
-Approved On: 12 Aug 2026
-Status: Active
-```
-
-Profile changes keep the previous terms in history (same append-only rule as discount).
+Profile changes keep the previous terms in the existing customer timeline (`CustomerEvent`). Do not silently overwrite. Each change stores previous snapshot, next snapshot, actor, timestamp, reason, and version.
 
 ---
 
-## 5. Payment schedules and tracking
+## 5. Payment schedules and tracking (P3.5 / P3.7)
 
 The engine must support, as Admin-configured schedules on a quotation / order:
 
@@ -152,7 +186,7 @@ The engine must support, as Admin-configured schedules on a quotation / order:
 
 ---
 
-## 6. Order confirmation gate
+## 6. Order confirmation gate (P3.6)
 
 An order **cannot** be confirmed without all of:
 
@@ -164,7 +198,7 @@ Missing any of these blocks confirmation.
 
 ---
 
-## 7. AI behaviour (consumes this engine; does not own it)
+## 7. AI behaviour (later product phases; not P3.1)
 
 Voice / chat / email AI in later phases may query:
 
@@ -174,62 +208,42 @@ Allowed:
 
 - Explain **final approved** terms.
 - Refuse unverified claims (“I’m an old customer, give me credit”) by checking CRM.
-- If the customer asks for terms **beyond** the approved profile → treat as negotiation → live transfer to Admin. Do not grant, promise, or edit terms.
+- If the customer asks for terms **beyond** the approved profile → treat as negotiation / payment-date extension → live transfer to Admin. Do not grant, promise, or edit terms.
 
 Not allowed:
 
-- Set or change total, discount, advance %, credit status, credit limit, or schedule.
+- Set or change total, discount, advance %, credit status, credit limit, schedule, or payment date.
 - Treat customer type as credit approval.
 
-Example:
-
-- Approved: “Yes, your account has approved payment-after-delivery terms. Payment is due within 3 days of delivery.”
-- Not approved: “Our current terms for your account require payment before dispatch. If you’d like to request different terms, I’ll connect you with our team.” → live Admin transfer.
-- “Can you give me 10 days instead?” → negotiation → immediate live transfer.
+P3.1 keeps `crm_ai` off by default, `AI_PROVIDER=none`, `AI_DAILY_TOKEN_BUDGET=0`. No commercial AI writes.
 
 ---
 
-## 8. Authorisation (to implement when this phase starts)
+## 8. Authorisation
 
-Separate from enquiry edit. Exact permission keys will be added in implementation, but the product rules are:
+| Action | Who | Permission (when implemented) |
+|--------|-----|-------------------------------|
+| Approve / change customer credit profile | Admin or authorised Sub-Admin | `customers.manage_credit` (P3.1) |
+| Approve a new payment date | Same | `customers.manage_credit` (P3.1) |
+| Record a payment-date *request* (does not change the date) | Staff logging a request; future AI may call the same service | Does not grant credit |
+| Enter / edit quotation total | Admin or authorised Sub-Admin | Later checkpoint |
+| Set advance % | Admin or authorised Sub-Admin | Later checkpoint |
+| Apply / change discount | Separately authorised | Later checkpoint |
+| Confirm order | Gate + authorised actor | Later checkpoint |
+| AI | Read latest approved snapshot only | Never writes |
 
-| Action | Who |
-|--------|-----|
-| Enter / edit quotation total | Admin or authorised Sub-Admin |
-| Set advance % | Admin or authorised Sub-Admin |
-| Apply / change discount | Separately authorised (configurable) |
-| Approve / change customer credit profile | Admin or authorised Sub-Admin |
-| Confirm order | Only when gate fields are complete + actor is authorised |
-| AI | Read latest approved snapshot only |
-
-All commercial writes require a **reason** (except possibly the first “initial quotation” which still records reason).
+All commercial writes require a **reason**.
 
 ---
 
 ## 9. Scope relative to the current repo
 
-**Do not implement until this phase is explicitly started.** Until then:
+**P3.1 implements** customer credit/payment profile + append-only history on existing `Customer` / `CustomerEvent`.
 
-- Enquiry status `quotation-sent` remains a status only.
-- Customer records have no credit / payment profile.
-- No quotation, order, or payment collections.
+**P3.1 does not implement:** quotations, totals, discount, advance/balance, payment collection, reminders, order gate, WhatsApp, ElevenLabs, AI negotiation.
 
-**This phase does not include:** WhatsApp send/webhooks, ElevenLabs, live transfer, autonomous AI actions, public e-commerce checkout.
+Enquiry status `quotation-sent` remains a status only until P3.2.
 
-**Depends on:** Phase 4 CRM customers + enquiries, existing Admin / Sub-Admin RBAC.
+**Depends on:** CRM customers + enquiries, existing Admin / Sub-Admin RBAC.
 
 **Unlocks:** later AI can answer payment questions from approved data instead of improvising.
-
----
-
-## 10. Suggested implementation slices (when approved)
-
-Work in checkpoints; stop for approval after each.
-
-1. Types, permissions, append-only commercial-history model
-2. Customer payment / credit profile + history UI (no auto-grant)
-3. Quotation: manual total, advance slider, calculated amounts, discount numeric + history
-4. Payment schedule + outstanding tracking
-5. Order confirmation gate
-6. Reminder / escalation rules (Admin-controlled; no AI writes)
-7. Read APIs for later AI (approved snapshot only)

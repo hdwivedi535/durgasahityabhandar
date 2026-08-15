@@ -247,18 +247,31 @@ shared/       Shared types and permissions
 docs/         Architecture documentation
 ```
 
-## Development Phases
+## Product roadmap
 
-| Phase | Status |
-|-------|--------|
+| Product phase | Status |
+|---------------|--------|
+| 1 — Multilingual B2B website + catalogue | Complete |
+| 2 — CRM + enquiries + Admin/Sub-Admin | Complete |
+| 3 — Commercial & Payment Terms Engine | **P3.1 complete** — customer credit profile + history. See [docs/COMMERCIAL-PAYMENT-ENGINE.md](docs/COMMERCIAL-PAYMENT-ENGINE.md) |
+| 4 — WhatsApp + enquiry consolidation | Later |
+| 5 — ElevenLabs voice + human transfer | Later |
+| 6 — AI qualification + escalation | Later |
+| 7 — Advanced automation + analytics/BI | Later |
+
+Product Phase 3 checkpoints are **P3.1–P3.8**. They are not AI **CP1–CP6** (those are completed CRM Intelligence slices).
+
+## Historical engineering phases (do not rename)
+
+| Label in repo | Status |
+|---------------|--------|
 | 1 — Architecture | Complete |
 | 2 — Foundation | Complete |
 | 3 — CMS + Catalogue | Complete — categories, books, lookups, CMS pages/homepage, visibility, public catalogue |
 | 4 — CRM | Complete — customers, enquiries, timeline, search, deduplication |
-| 5 — CRM Intelligence | In progress — foundation, scoring, enquiry/customer summaries, admin enquiry and customer summary UI (no live AI) |
-| 6 — Commercial & Payment Terms Engine | Requirements locked — quotations, versioned commercial terms, customer credit profiles, payment schedules. Not started. |
+| 5 — CRM Intelligence | First slice complete — AI CP1–CP6 (foundation, scoring, enquiry/customer summaries, admin UI; no live AI) |
 
-See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for architecture and [docs/COMMERCIAL-PAYMENT-ENGINE.md](docs/COMMERCIAL-PAYMENT-ENGINE.md) for Phase 6 requirements.
+See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for architecture. Do not call the Commercial Engine “Engineering Phase 6”.
 
 ## Scripts
 

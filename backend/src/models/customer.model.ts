@@ -1,4 +1,43 @@
+import {
+  CREDIT_LIMIT_CURRENCY,
+  CREDIT_STATUSES,
+  CUSTOMER_RELATIONSHIP_TYPES,
+  DEFAULT_PAYMENT_TERMS_SUMMARY,
+  type CreditStatus,
+  type CustomerRelationshipType,
+} from '@dsb/shared';
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
+
+export interface ICustomerPaymentTerms {
+  summary: string;
+  requirePaymentBeforeDispatch: boolean;
+  dueDaysAfterDelivery?: number;
+  approvedPaymentDueOn?: Date;
+}
+
+export interface IPendingPaymentDateRequest {
+  requestedDueOn: Date;
+  requestedAt: Date;
+  reason: string;
+  requestedById?: Types.ObjectId;
+  requestedByName?: string;
+}
+
+export interface ICustomerCreditProfile {
+  relationshipType: CustomerRelationshipType;
+  creditStatus: CreditStatus;
+  creditLimitMinor?: number;
+  creditLimitCurrency: typeof CREDIT_LIMIT_CURRENCY;
+  paymentTerms: ICustomerPaymentTerms;
+  isActive: boolean;
+  reviewAt?: Date;
+  expiresAt?: Date;
+  approvedById?: Types.ObjectId;
+  approvedByName?: string;
+  approvedAt?: Date;
+  version: number;
+  pendingPaymentDateRequest?: IPendingPaymentDateRequest;
+}
 
 export interface ICustomer extends Document {
   customerNumber: string;
@@ -18,9 +57,74 @@ export interface ICustomer extends Document {
   needsReview: boolean;
   mergedIntoId?: Types.ObjectId;
   isArchived: boolean;
+  creditProfile: ICustomerCreditProfile;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export function defaultCreditProfileDoc(): ICustomerCreditProfile {
+  return {
+    relationshipType: 'new',
+    creditStatus: 'no_credit',
+    creditLimitCurrency: CREDIT_LIMIT_CURRENCY,
+    paymentTerms: {
+      summary: DEFAULT_PAYMENT_TERMS_SUMMARY,
+      requirePaymentBeforeDispatch: true,
+    },
+    isActive: true,
+    version: 1,
+  };
+}
+
+const paymentTermsSchema = new Schema<ICustomerPaymentTerms>(
+  {
+    summary: { type: String, required: true, trim: true, default: DEFAULT_PAYMENT_TERMS_SUMMARY },
+    requirePaymentBeforeDispatch: { type: Boolean, required: true, default: true },
+    dueDaysAfterDelivery: { type: Number, min: 0 },
+    approvedPaymentDueOn: { type: Date },
+  },
+  { _id: false },
+);
+
+const pendingPaymentDateRequestSchema = new Schema<IPendingPaymentDateRequest>(
+  {
+    requestedDueOn: { type: Date, required: true },
+    requestedAt: { type: Date, required: true },
+    reason: { type: String, required: true, trim: true },
+    requestedById: { type: Schema.Types.ObjectId, ref: 'User' },
+    requestedByName: { type: String },
+  },
+  { _id: false },
+);
+
+const creditProfileSchema = new Schema<ICustomerCreditProfile>(
+  {
+    relationshipType: {
+      type: String,
+      required: true,
+      enum: CUSTOMER_RELATIONSHIP_TYPES,
+      default: 'new',
+    },
+    creditStatus: {
+      type: String,
+      required: true,
+      enum: CREDIT_STATUSES,
+      default: 'no_credit',
+    },
+    creditLimitMinor: { type: Number, min: 0 },
+    creditLimitCurrency: { type: String, required: true, default: CREDIT_LIMIT_CURRENCY },
+    paymentTerms: { type: paymentTermsSchema, required: true, default: () => ({}) },
+    isActive: { type: Boolean, required: true, default: true },
+    reviewAt: { type: Date },
+    expiresAt: { type: Date },
+    approvedById: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedByName: { type: String },
+    approvedAt: { type: Date },
+    version: { type: Number, required: true, default: 1, min: 1 },
+    pendingPaymentDateRequest: { type: pendingPaymentDateRequestSchema },
+  },
+  { _id: false },
+);
 
 const customerSchema = new Schema<ICustomer>(
   {
@@ -48,6 +152,7 @@ const customerSchema = new Schema<ICustomer>(
     needsReview: { type: Boolean, default: false },
     mergedIntoId: { type: Schema.Types.ObjectId, ref: 'Customer' },
     isArchived: { type: Boolean, default: false },
+    creditProfile: { type: creditProfileSchema, required: true, default: defaultCreditProfileDoc },
   },
   { timestamps: true },
 );

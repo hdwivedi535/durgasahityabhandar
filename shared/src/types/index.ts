@@ -5,5 +5,6 @@ export * from './category';
 export * from './cms';
 export * from './features';
 export * from './import-export';
+export * from './commercial';
 export * from './crm';
 export * from './lookup';

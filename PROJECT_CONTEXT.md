@@ -29,19 +29,33 @@ npm workspaces: `shared/` → `backend/` (Fastify + MongoDB) → `frontend/` (Ne
 
 Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run seed` → `npm run dev`. Re-seed after Phase 4/5 foundation to pick up `enquiries.generate_ai`, `customers.generate_ai`, and `crm_ai`.
 
-## Roadmap
+## Product roadmap (do not mix with AI CP numbers)
 
-| Phase | Status |
-|-------|--------|
-| 1 Architecture | Complete |
-| 2 Foundation | Complete |
-| 3 CMS + catalogue | Complete |
-| 4 CRM | Complete |
-| 5 CRM Intelligence (first slice) | In progress — CP1–CP6 and CP4–CP5 done |
-| 6 Commercial & Payment Terms Engine | Requirements locked — **do not start** until approved (`docs/COMMERCIAL-PAYMENT-ENGINE.md`) |
-| Later | User management, WhatsApp, voice AI, tracking — **do not start** until approved |
+| Product phase | Status |
+|---------------|--------|
+| 1 Multilingual B2B website + catalogue | Complete |
+| 2 CRM + enquiries + Admin/Sub-Admin | Complete |
+| 3 Commercial & Payment Terms Engine | **P3.1 complete** — wait for approval before P3.2 (`docs/COMMERCIAL-PAYMENT-ENGINE.md`) |
+| 4 WhatsApp + enquiry consolidation | Later |
+| 5 ElevenLabs voice + human transfer | Later |
+| 6 AI qualification + escalation | Later |
+| 7 Advanced automation + analytics/BI | Later |
 
-Architecture-doc Phase 5 (users/teams) is deferred. Repo Phase 5 is CRM intelligence on top of Phase 4. Product-chat “Phase 3 Commercial Engine” = repo Phase 6. Product-chat “Phase 5 ElevenLabs” remains later and is not repo Phase 5.
+Product Phase 3 checkpoints: **P3.1** credit profile → P3.2 quotations → P3.3 discount → P3.4 advance → P3.5 schedules → P3.6 order confirmation → P3.7 reminders → P3.8 commercial UI. Stop after each.
+
+## Historical engineering / architecture phases (do not rename)
+
+These labels already exist in the repo (architecture doc, CMS, CRM). They are **not** the product roadmap numbers above.
+
+| Label in repo | Status |
+|---------------|--------|
+| Architecture Phase 1 | Complete |
+| Foundation Phase 2 | Complete |
+| CMS + catalogue (historical “Phase 3”) | Complete |
+| CRM (historical “Phase 4”) | Complete |
+| CRM Intelligence (historical “Phase 5”, AI **CP1–CP6**) | First slice done — do not renumber CP1–CP6 |
+
+Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is ElevenLabs, **not** CRM intelligence. Do not call the Commercial Engine “Engineering Phase 6”.
 
 ## Phase 4 in repo (do not re-implement)
 
@@ -55,7 +69,7 @@ Architecture-doc Phase 5 (users/teams) is deferred. Repo Phase 5 is CRM intellig
 
 **Customer/business country and phone country/dial code are independent fields and must never be inferred from one another.** Nepal location + India (+91) phone is valid; India location + Nepal (+977) phone is valid. Future WhatsApp must use `phoneCountry` / E.164, not business `country`.
 
-Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, `enquiry-ai-summary`, `customer-ai-summary`, plus existing catalogue and AI foundation tests.
+Tests: `phone`, `customer-match`, `country-phone`, `crm-config-defaults`, `crm-service`, `public-enquiry-rate-limit`, `lead-score`, `lead-score-service`, `enquiry-ai-summary`, `customer-ai-summary`, `customer-credit-profile`, plus existing catalogue and AI foundation tests.
 
 ## Phase 5 first slice (approved)
 
@@ -114,29 +128,31 @@ Rules (base 30): review +20; overdue follow-up +25; missing follow-up +8 (new/co
 
 **Later (not this work):** reply/follow-up/priority suggestions, inbox score sorting.
 
-## Phase 6 — Commercial & Payment Engine (requirements only)
+## Product Phase 3 — Commercial & Payment Engine
 
-Product conversation called this “Phase 3”. In this repo it is **engineering Phase 6** so it does not collide with CMS Phase 3. Spec: `docs/COMMERCIAL-PAYMENT-ENGINE.md`.
+Spec: `docs/COMMERCIAL-PAYMENT-ENGINE.md`. **P3.1** is the only approved slice: customer credit/payment profile + history. Do not start P3.2+ until approved.
 
-Locked rules (do not implement until this phase is started):
+Locked rules:
 
-- Humans (Admin / authorised Sub-Admin) own totals, discount %, advance %, credit, and payment schedules. AI never writes them.
-- Discount and all commercial terms are append-only versioned (who / when / reason). Never overwrite history.
-- Customer type (new / existing / VIP) does **not** grant credit. Credit requires explicit Admin approval on a customer payment profile.
-- No order confirmation without customer name + quantity + payment information.
+- Humans (Admin / authorised Sub-Admin with `customers.manage_credit`) own credit status, limit, payment terms, and approved payment dates. AI never writes them.
+- Customer relationship type (new / existing / VIP) does **not** grant credit. Credit requires explicit approval.
+- New customers default to no credit / 100% advance before dispatch.
+- Commercial changes are append-only on the existing customer timeline (who / when / reason / previous → next). Never overwrite history.
+- Payment-date extension: customer request is recorded only. The approved date changes only when authorised staff approve **and** manually enter the new date.
+- No order confirmation without customer name + quantity + payment information (P3.6, not P3.1).
 
 ## Out of scope (do not add yet)
 
-WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomous AI actions, analytics, macros, automations, SLA engine, attachments, public tracking tokens, teams, CAPTCHA. Phase 6 commercial engine is specified but **not started**.
+WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomous AI actions, analytics, macros, automations, SLA engine, attachments, public tracking tokens, teams, CAPTCHA. Product Phase 3 after P3.1 (quotations, discount, advance, schedules, reminders, commercial UI) is **not started**.
 
 `/track` remains a placeholder.
 
 ## Constraints
 
 - Do not commit secrets. Backend Vercel: `MONGODB_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`, `NODE_ENV`. Do not set a real `AI_API_KEY` until approved.
-- Seed Atlas after pulling Phase 5 CP1/CP4 (`npm run seed`) so `enquiries.generate_ai`, `customers.generate_ai`, and `crm_ai` exist.
+- Seed Atlas after pulling P3.1 (`npm run seed`) so `customers.manage_credit` exists, along with existing `enquiries.generate_ai`, `customers.generate_ai`, and `crm_ai`.
 - Password special characters in Atlas URIs must be URL-encoded.
 
 ## Next task
 
-Wait for approval before any further Phase 5 work. Do not start reply, follow-up, or priority suggestions, inbox sorting, or a live provider. Do not start Phase 6 implementation until explicitly approved.
+**P3.1 is complete. STOP.** Do not start P3.2 (quotations) or any later Product Phase 3 checkpoint until explicitly approved. Do not start WhatsApp, ElevenLabs, or new AI work.

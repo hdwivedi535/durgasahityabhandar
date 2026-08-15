@@ -109,3 +109,32 @@ export const enquiryUpdateSchema = z.object({
   phoneCountry: z.string().length(2).optional(),
   phone: z.string().min(5).max(30).optional(),
 });
+
+const isoDate = z.string().min(1);
+
+export const creditProfileUpdateSchema = z.object({
+  relationshipType: z.enum(['new', 'existing', 'vip']),
+  creditStatus: z.enum(['no_credit', 'approved_credit', 'credit_suspended']),
+  creditLimitMinor: z.number().int().nonnegative().optional(),
+  paymentTerms: z.object({
+    summary: z.string().min(1).max(500),
+    requirePaymentBeforeDispatch: z.boolean(),
+    dueDaysAfterDelivery: z.number().int().nonnegative().nullable().optional(),
+    approvedPaymentDueOn: isoDate.nullable().optional(),
+  }),
+  isActive: z.boolean(),
+  reviewAt: isoDate.nullable().optional(),
+  expiresAt: isoDate.nullable().optional(),
+  reason: z.string().min(1).max(500),
+});
+
+export const paymentDateExtensionRequestSchema = z.object({
+  requestedDueOn: isoDate,
+  reason: z.string().min(1).max(500),
+});
+
+export const paymentDateExtensionResolveSchema = z.object({
+  decision: z.enum(['approve', 'reject']),
+  approvedDueOn: isoDate.optional(),
+  reason: z.string().min(1).max(500),
+});

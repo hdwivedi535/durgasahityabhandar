@@ -8,8 +8,8 @@ describe('Phase 5 foundation', () => {
     expect(ALL_PERMISSIONS).toContain('enquiries.generate_ai');
   });
 
-  it('includes customers.generate_ai', () => {
-    expect(ALL_PERMISSIONS).toContain('customers.generate_ai');
+  it('includes customers.manage_credit', () => {
+    expect(ALL_PERMISSIONS).toContain('customers.manage_credit');
   });
 
   it('includes crm_ai feature key', () => {

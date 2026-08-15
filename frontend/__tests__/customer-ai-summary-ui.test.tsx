@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AuthUser, CustomerDetailDto } from '@dsb/shared';
+import { defaultCustomerCreditProfile } from '@dsb/shared';
 import { CustomerAiSummaryCard } from '@/components/admin/customer-ai-summary-card';
 import { userHasPermission } from '@/lib/rbac';
 import { getAiActionMessage } from '@/lib/ai-errors';
@@ -73,6 +74,7 @@ const customer: CustomerDetailDto = {
   stats: { totalEnquiries: 0, openEnquiries: 0 },
   needsReview: false,
   isArchived: false,
+  creditProfile: defaultCustomerCreditProfile(),
   createdAt: '2026-08-14T12:00:00.000Z',
   updatedAt: '2026-08-14T12:00:00.000Z',
   timeline: [
