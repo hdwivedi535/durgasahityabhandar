@@ -256,8 +256,9 @@ docs/         Architecture documentation
 | 3 — CMS + Catalogue | Complete — categories, books, lookups, CMS pages/homepage, visibility, public catalogue |
 | 4 — CRM | Complete — customers, enquiries, timeline, search, deduplication |
 | 5 — CRM Intelligence | In progress — foundation, scoring, enquiry/customer summaries, admin enquiry and customer summary UI (no live AI) |
+| 6 — Commercial & Payment Terms Engine | Requirements locked — quotations, versioned commercial terms, customer credit profiles, payment schedules. Not started. |
 
-See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for full architecture.
+See [docs/PHASE-1-ARCHITECTURE.md](docs/PHASE-1-ARCHITECTURE.md) for architecture and [docs/COMMERCIAL-PAYMENT-ENGINE.md](docs/COMMERCIAL-PAYMENT-ENGINE.md) for Phase 6 requirements.
 
 ## Scripts
 

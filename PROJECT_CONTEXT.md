@@ -38,9 +38,10 @@ Local: `npm install` → `backend/.env` + `frontend/.env.local` → `npm run see
 | 3 CMS + catalogue | Complete |
 | 4 CRM | Complete |
 | 5 CRM Intelligence (first slice) | In progress — CP1–CP6 and CP4–CP5 done |
-| Later | User management, communication, tracking — **do not start** until approved |
+| 6 Commercial & Payment Terms Engine | Requirements locked — **do not start** until approved (`docs/COMMERCIAL-PAYMENT-ENGINE.md`) |
+| Later | User management, WhatsApp, voice AI, tracking — **do not start** until approved |
 
-Architecture-doc Phase 5 (users/teams) is deferred. Product Phase 5 is CRM intelligence on top of Phase 4.
+Architecture-doc Phase 5 (users/teams) is deferred. Repo Phase 5 is CRM intelligence on top of Phase 4. Product-chat “Phase 3 Commercial Engine” = repo Phase 6. Product-chat “Phase 5 ElevenLabs” remains later and is not repo Phase 5.
 
 ## Phase 4 in repo (do not re-implement)
 
@@ -113,9 +114,20 @@ Rules (base 30): review +20; overdue follow-up +25; missing follow-up +8 (new/co
 
 **Later (not this work):** reply/follow-up/priority suggestions, inbox score sorting.
 
+## Phase 6 — Commercial & Payment Engine (requirements only)
+
+Product conversation called this “Phase 3”. In this repo it is **engineering Phase 6** so it does not collide with CMS Phase 3. Spec: `docs/COMMERCIAL-PAYMENT-ENGINE.md`.
+
+Locked rules (do not implement until this phase is started):
+
+- Humans (Admin / authorised Sub-Admin) own totals, discount %, advance %, credit, and payment schedules. AI never writes them.
+- Discount and all commercial terms are append-only versioned (who / when / reason). Never overwrite history.
+- Customer type (new / existing / VIP) does **not** grant credit. Credit requires explicit Admin approval on a customer payment profile.
+- No order confirmation without customer name + quantity + payment information.
+
 ## Out of scope (do not add yet)
 
-WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomous AI actions, analytics, macros, automations, SLA engine, attachments, public tracking tokens, teams, CAPTCHA.
+WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomous AI actions, analytics, macros, automations, SLA engine, attachments, public tracking tokens, teams, CAPTCHA. Phase 6 commercial engine is specified but **not started**.
 
 `/track` remains a placeholder.
 
@@ -127,4 +139,4 @@ WhatsApp send/webhooks, email, quotation generation, orders, payments, autonomou
 
 ## Next task
 
-Wait for approval before any further Phase 5 work. Do not start reply, follow-up, or priority suggestions, inbox sorting, or a live provider.
+Wait for approval before any further Phase 5 work. Do not start reply, follow-up, or priority suggestions, inbox sorting, or a live provider. Do not start Phase 6 implementation until explicitly approved.
